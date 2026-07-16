@@ -118,7 +118,7 @@ export const Settings = ({ userId }: SettingsProps) => {
   const areNotificationsAvailable = notification.permission === 'granted'
 
   return (
-    <Box className="max-w-3xl mx-auto p-4">
+    <Box className="dt-chat-document">
       <Typography
         variant="h2"
         sx={{
@@ -198,8 +198,8 @@ export const Settings = ({ userId }: SettingsProps) => {
           mb: 2,
         }}
       >
-        Export your Chitchatter profile data so that it can be moved to another
-        browser or device.{' '}
+        Export your Digitable Chat profile data so that it can be moved to
+        another browser or device.{' '}
         <strong>Be careful not to share the exported data with anyone</strong>.
         It contains your unique verification keys.
       </Typography>
@@ -228,7 +228,7 @@ export const Settings = ({ userId }: SettingsProps) => {
           mb: 2,
         }}
       >
-        Import your Chitchatter profile that was previously exported from
+        Import your Digitable Chat profile that was previously exported from
         another browser or device.
       </Typography>
       <FileReaderInput
@@ -277,7 +277,7 @@ export const Settings = ({ userId }: SettingsProps) => {
           </PeerNameDisplay>
         </strong>{' '}
         to a new, randomly-assigned name. It will also reset all of your saved
-        Chitchatter application preferences.
+        Digitable Chat application preferences.
       </Typography>
       <Button
         variant="outlined"
@@ -300,7 +300,7 @@ export const Settings = ({ userId }: SettingsProps) => {
           mb: 2,
         }}
       >
-        Chitchatter only stores user preferences and never message content of
+        Digitable Chat only stores user preferences and never message content of
         any kind. This preference data is only stored locally on your device and
         not a server.
       </Typography>

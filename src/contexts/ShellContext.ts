@@ -12,7 +12,7 @@ import {
 } from 'models/chat'
 import { PeerConnectionType } from 'lib/PeerRoom'
 import { ConnectionTestResults } from 'components/Shell/useConnectionTest'
-import { TrackerConnection } from 'lib/ConnectionTest'
+import { SignalingConnection } from 'lib/ConnectionTest'
 
 interface ShellContextProps {
   isEmbedded: boolean
@@ -84,7 +84,7 @@ export const ShellContext = createContext<ShellContextProps>({
   connectionTestResults: {
     hasHost: false,
     hasRelay: false,
-    trackerConnection: TrackerConnection.SEARCHING,
+    signalingConnection: SignalingConnection.SEARCHING,
   },
   updatePeer: () => {},
 })

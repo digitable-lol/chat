@@ -75,8 +75,10 @@ const getConfigFromSdk = () => {
 
 const Bootstrap = ({
   persistedStorage: persistedStorageProp = localforage.createInstance({
+    // Keep the legacy database name so existing Chitchatter profiles migrate
+    // into Digitable Chat without losing local verification keys or settings.
     name: 'chitchatter',
-    description: 'Persisted settings data for chitchatter',
+    description: 'Persisted settings data for Digitable Chat',
   }),
   initialUserSettings,
   serializationService = serialization,
@@ -144,7 +146,7 @@ const Bootstrap = ({
             }
           } catch (e) {
             console.error(
-              'Chitchatter configuration from parent frame could not be loaded'
+              'Digitable Chat configuration from parent frame could not be loaded'
             )
           }
         }

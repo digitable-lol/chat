@@ -1,8 +1,9 @@
 import './polyfills'
 import ReactDOM from 'react-dom/client'
-import 'typeface-roboto'
+import 'typeface-public-sans'
 
 import './index.sass'
+import './brand/digitable-chat.css'
 
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import { PrismAsyncLight as SyntaxHighlighter } from 'react-syntax-highlighter'

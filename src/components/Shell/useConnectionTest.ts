@@ -5,31 +5,35 @@ import {
   ConnectionTest,
   ConnectionTestEvent,
   ConnectionTestEvents,
-  TrackerConnection,
+  SignalingConnection,
 } from 'lib/ConnectionTest'
 
 export interface ConnectionTestResults {
   hasHost: boolean
   hasRelay: boolean
-  trackerConnection: TrackerConnection
+  signalingConnection: SignalingConnection
 }
 
 const rtcPollInterval = 20 * 1000
-const trackerPollInterval = 5 * 1000
+const signalingPollInterval = 5 * 1000
 
 export const useConnectionTest = () => {
   const [hasHost, setHasHost] = useState(false)
   const [hasRelay, setHasRelay] = useState(false)
-  const [trackerConnection, setTrackerConnection] = useState(
-    TrackerConnection.SEARCHING
+  const [signalingConnection, setSignalingConnection] = useState(
+    SignalingConnection.SEARCHING
   )
 
   useEffect(() => {
+    let active = true
+    let currentRtcTest: ConnectionTest | undefined
+
     const checkRtcConnection = async () => {
       const connectionTest = new ConnectionTest()
+      currentRtcTest = connectionTest
 
       const handleHasHostChanged = ((event: ConnectionTestEvent) => {
-        setHasHost(event.detail.hasHost)
+        if (active) setHasHost(event.detail.hasHost)
 
         connectionTest.removeEventListener(
           ConnectionTestEvents.HAS_HOST_CHANGED,
@@ -43,7 +47,7 @@ export const useConnectionTest = () => {
       )
 
       const handleHasRelayChanged = ((event: ConnectionTestEvent) => {
-        setHasRelay(event.detail.hasRelay)
+        if (active) setHasRelay(event.detail.hasRelay)
 
         connectionTest.removeEventListener(
           ConnectionTestEvents.HAS_RELAY_CHANGED,
@@ -56,7 +60,7 @@ export const useConnectionTest = () => {
         handleHasRelayChanged
       )
 
-      setTimeout(() => {
+      window.setTimeout(() => {
         connectionTest.removeEventListener(
           ConnectionTestEvents.HAS_HOST_CHANGED,
           handleHasHostChanged
@@ -69,40 +73,48 @@ export const useConnectionTest = () => {
 
       try {
         await connectionTest.initRtcPeerConnectionTest()
-      } catch (e) {
-        setHasHost(false)
-        setHasRelay(false)
-        console.error(e)
+      } catch (error) {
+        if (active) {
+          setHasHost(false)
+          setHasRelay(false)
+        }
+        console.error(error)
       }
 
       return connectionTest
     }
 
-    ;(async () => {
-      while (true) {
+    const pollRtc = async () => {
+      while (active) {
         const connectionTest = await checkRtcConnection()
         await sleep(rtcPollInterval)
         connectionTest.destroyRtcPeerConnectionTest()
       }
-    })()
-    ;(async () => {
-      while (true) {
-        try {
-          const connectionTest = new ConnectionTest()
-          const trackerConnectionTestResult =
-            connectionTest.testTrackerConnection()
+    }
 
-          setTrackerConnection(trackerConnectionTestResult)
-        } catch (e) {
-          setTrackerConnection(TrackerConnection.FAILED)
+    const pollSignaling = async () => {
+      while (active) {
+        try {
+          const result = new ConnectionTest().testSignalingConnection()
+          if (active) setSignalingConnection(result)
+        } catch (error) {
+          if (active) setSignalingConnection(SignalingConnection.FAILED)
         }
 
-        await sleep(trackerPollInterval)
+        await sleep(signalingPollInterval)
       }
-    })()
+    }
+
+    void pollRtc()
+    void pollSignaling()
+
+    return () => {
+      active = false
+      currentRtcTest?.destroyRtcPeerConnectionTest()
+    }
   }, [])
 
   return {
-    connectionTestResults: { hasHost, hasRelay, trackerConnection },
+    connectionTestResults: { hasHost, hasRelay, signalingConnection },
   }
 }

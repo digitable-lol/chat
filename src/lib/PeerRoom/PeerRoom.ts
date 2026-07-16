@@ -1,5 +1,5 @@
-import { joinRoom, Room, BaseRoomConfig, DataPayload } from 'trystero'
-import { RelayConfig } from 'trystero/torrent'
+import { Room, BaseRoomConfig, DataPayload, RelayConfig } from 'trystero'
+import { joinRoom } from 'trystero/mqtt'
 
 import { sleep } from 'lib/sleep'
 import { StreamType } from 'models/chat'

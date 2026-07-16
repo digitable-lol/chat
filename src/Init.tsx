@@ -10,6 +10,7 @@ import {
 } from 'components/Shell/EnvironmentUnsupportedDialog'
 import { WholePageLoading } from 'components/Loading/Loading'
 import { ColorMode, UserSettings } from 'models/settings'
+import { loadRtcConfig } from 'config/rtcConfig'
 
 import type { BootstrapProps } from './Bootstrap'
 
@@ -31,7 +32,10 @@ const Init = ({ getUuid = uuid, ...props }: InitProps) => {
       if (userSettings !== null) return
 
       try {
-        const { publicKey, privateKey } = await encryption.generateKeyPair()
+        const [{ publicKey, privateKey }] = await Promise.all([
+          encryption.generateKeyPair(),
+          loadRtcConfig(),
+        ])
 
         setUserSettings({
           userId: getUuid(),
@@ -46,7 +50,7 @@ const Init = ({ getUuid = uuid, ...props }: InitProps) => {
       } catch (e) {
         console.error(e)
         setErrorMessage(
-          'Chitchatter was unable to boot up. Please check the browser console.'
+          'Digitable Chat was unable to start. Please check the browser console.'
         )
       }
     })()

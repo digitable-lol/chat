@@ -8,13 +8,12 @@ import {
   useState,
 } from 'react'
 import CssBaseline from '@mui/material/CssBaseline'
-import { ThemeProvider, createTheme } from '@mui/material/styles'
+import { ThemeProvider } from '@mui/material/styles'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { AlertColor } from '@mui/material/Alert'
 import MuiDrawer from '@mui/material/Drawer'
 import Link from '@mui/material/Link'
-import { useWindowSize } from '@react-hook/window-size'
 
 import { ShellContext } from 'contexts/ShellContext'
 import { SettingsContext } from 'contexts/SettingsContext'
@@ -30,6 +29,7 @@ import {
 } from 'models/chat'
 import { ErrorBoundary } from 'components/ErrorBoundary'
 import { PeerConnectionType } from 'lib/PeerRoom'
+import { createDigitableTheme } from 'brand/theme'
 
 import { Drawer } from './Drawer'
 import { UpgradeDialog } from './UpgradeDialog'
@@ -59,21 +59,10 @@ export const Shell = ({ appNeedsUpdate, children, userPeerId }: ShellProps) => {
 
   const { colorMode } = getUserSettings()
 
-  const theme = useMemo(
-    () =>
-      createTheme({
-        palette: {
-          mode: colorMode,
-        },
-      }),
-    [colorMode]
-  )
-
-  const [windowWidth] = useWindowSize()
-  const defaultSidebarsOpen = windowWidth >= theme.breakpoints.values.lg
+  const theme = useMemo(() => createDigitableTheme(colorMode), [colorMode])
 
   const [isAlertShowing, setIsAlertShowing] = useState(false)
-  const [isDrawerOpen, setIsDrawerOpen] = useState(defaultSidebarsOpen)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isQRCodeDialogOpen, setIsQRCodeDialogOpen] = useState(false)
   const [isRoomShareDialogOpen, setIsRoomShareDialogOpen] = useState(false)
   const [alertSeverity, setAlertSeverity] = useState<AlertColor>('info')
@@ -84,7 +73,7 @@ export const Shell = ({ appNeedsUpdate, children, userPeerId }: ShellProps) => {
   const [alertText, setAlertText] = useState('')
   const [roomId, setRoomId] = useState<string | undefined>(undefined)
   const [password, setPassword] = useState<string | undefined>(undefined)
-  const [isPeerListOpen, setIsPeerListOpen] = useState(defaultSidebarsOpen)
+  const [isPeerListOpen, setIsPeerListOpen] = useState(false)
   const [peerList, setPeerList] = useState<Peer[]>([]) // except self
   const [
     isServerConnectionFailureDialogOpen,
@@ -341,7 +330,8 @@ export const Shell = ({ appNeedsUpdate, children, userPeerId }: ShellProps) => {
           <>
             <UpgradeDialog appNeedsUpdate={appNeedsUpdate} />
             <Box
-              className="Chitchatter"
+              className="dt-chat-product"
+              data-digitable-color-mode={colorMode}
               sx={{
                 height: '100vh',
                 display: 'flex',
@@ -419,10 +409,10 @@ export const Shell = ({ appNeedsUpdate, children, userPeerId }: ShellProps) => {
                   >
                     This conversation is powered by{' '}
                     <Link
-                      href="https://github.com/jeremyckahn/chitchatter"
+                      href="https://github.com/digitable-lol/chat"
                       target="_blank"
                     >
-                      Chitchatter
+                      Digitable Chat
                     </Link>
                   </Typography>
                 ) : null}

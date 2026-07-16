@@ -51,7 +51,7 @@ export const EmbedCodeDialog = ({
 
   return (
     <Dialog open={showEmbedCode} onClose={handleEmbedCodeWindowClose}>
-      <DialogTitle>Embedding Chitchatter</DialogTitle>
+      <DialogTitle>Embed Digitable Chat</DialogTitle>
       <DialogContent>
         <DialogContentText
           sx={{
@@ -97,10 +97,10 @@ export const EmbedCodeDialog = ({
         >
           As an alternative to using an <code>iframe</code>, you can use the{' '}
           <Link
-            href="https://github.com/jeremyckahn/chitchatter#SDK"
+            href="https://github.com/digitable-lol/chat#sdk"
             target="_blank"
           >
-            Chitchatter SDK
+            Digitable Chat SDK
           </Link>{' '}
           to embed a chat room as a{' '}
           <Link

@@ -1,32 +1,109 @@
-// This object is provided as `config.rtcConfig` to Trystero's `joinRoom`
-// function: https://github.com/dmotz/trystero#joinroomconfig-namespace
-//
-// https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/RTCPeerConnection#parameters
+const defaultStunServers: RTCIceServer[] = [
+  {
+    urls: [
+      'stun:stun.cloudflare.com:3478',
+      'stun:stun.l.google.com:19302',
+      'stun:stun1.l.google.com:19302',
+    ],
+  },
+]
+
+const parseUrls = (value?: string) =>
+  value
+    ?.split(',')
+    .map(url => url.trim())
+    .filter(Boolean) ?? []
+
+const staticTurnUrls = parseUrls(import.meta.env.VITE_TURN_URLS)
+const staticTurnUsername = import.meta.env.VITE_TURN_USERNAME?.trim()
+const staticTurnCredential = import.meta.env.VITE_TURN_CREDENTIAL?.trim()
+
+const staticTurnServers: RTCIceServer[] =
+  staticTurnUrls.length && staticTurnUsername && staticTurnCredential
+    ? [
+        {
+          urls: staticTurnUrls,
+          username: staticTurnUsername,
+          credential: staticTurnCredential,
+        },
+      ]
+    : []
+
+const configuredIceTransportPolicy =
+  import.meta.env.VITE_ICE_TRANSPORT_POLICY === 'relay' ? 'relay' : 'all'
+
 export const rtcConfig: RTCConfiguration = {
-  // These are the relay servers that are used in case a direct peer-to-peer
-  // connection cannot be made. Feel free to change them as you'd like. If you
-  // would like to disable relay servers entirely, remove the `iceServers`
-  // property from the rtcConfig object. IF YOU DISABLE RELAY SERVERS,
-  // CHITCHATTER PEERS MAY NOT BE ABLE TO CONNECT DEPENDING ON HOW THEY ARE
-  // CONNECTED TO THE INTERNET.
-  iceServers: [
-    {
-      urls: 'stun:82.209.159.69:3478',
-    },
-    {
-      urls: 'turn:82.209.159.69:3478',
-      username: 'c386d75b5633456cb3bc13812858098d',
-      credential: '58fd06d85fe14c0f9f46220748b0f565',
-    },
-    {
-      urls: 'turn:82.209.159.69:3478',
-      username: '0e2f563eacfd4c4a82ea239b04d1d494',
-      credential: '8179b4b533f240ad9fe590663bef1bc9',
-    },
-    {
-      urls: 'turn:82.209.159.69:3478',
-      username: 'feab95c3fcd147a2a96a3d3590bf9cda',
-      credential: '654cafd885424b7fb974e65f631f25f9',
-    },
-  ],
+  iceServers: [...defaultStunServers, ...staticTurnServers],
+  iceCandidatePoolSize: 4,
+  iceTransportPolicy: configuredIceTransportPolicy,
+}
+
+const isIceServer = (value: unknown): value is RTCIceServer => {
+  if (!value || typeof value !== 'object') return false
+
+  const { urls } = value as RTCIceServer
+
+  return (
+    typeof urls === 'string' ||
+    (Array.isArray(urls) &&
+      urls.length > 0 &&
+      urls.every(url => typeof url === 'string'))
+  )
+}
+
+const getIceServersFromPayload = (payload: unknown) => {
+  const candidates = Array.isArray(payload)
+    ? payload
+    : (payload as { iceServers?: unknown })?.iceServers
+
+  if (!Array.isArray(candidates)) return []
+
+  return candidates.filter(isIceServer)
+}
+
+// TURN credentials should be short-lived and delivered by a server-side
+// endpoint. The endpoint may return either an `iceServers` array or an object
+// with an `iceServers` property. Static VITE_TURN_* values are supported for
+// self-hosted deployments, but no credentials live in this repository.
+export const loadRtcConfig = async (
+  fetchIceConfig: typeof fetch = fetch
+): Promise<RTCConfiguration> => {
+  const iceServersUrl = import.meta.env.VITE_ICE_SERVERS_URL?.trim()
+
+  if (!iceServersUrl) return rtcConfig
+
+  const abortController = new AbortController()
+  const timeout = window.setTimeout(() => abortController.abort(), 5000)
+
+  try {
+    const response = await fetchIceConfig(iceServersUrl, {
+      cache: 'no-store',
+      signal: abortController.signal,
+    })
+
+    if (!response.ok) {
+      throw new Error(`ICE configuration request failed: ${response.status}`)
+    }
+
+    const remoteIceServers = getIceServersFromPayload(await response.json())
+
+    if (!remoteIceServers.length) {
+      throw new Error('ICE configuration did not contain any valid servers')
+    }
+
+    rtcConfig.iceServers = [
+      ...defaultStunServers,
+      ...staticTurnServers,
+      ...remoteIceServers,
+    ]
+  } catch (error) {
+    console.warn(
+      'Digitable Chat could not load remote TURN credentials; continuing with configured STUN/TURN fallback.',
+      error
+    )
+  } finally {
+    window.clearTimeout(timeout)
+  }
+
+  return rtcConfig
 }

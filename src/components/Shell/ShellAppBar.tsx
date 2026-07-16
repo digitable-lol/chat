@@ -3,7 +3,8 @@ import { styled, useTheme } from '@mui/material/styles'
 import IconButton from '@mui/material/IconButton'
 import MuiAppBar, { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar'
 import Fab from '@mui/material/Fab'
-import StepIcon from '@mui/material/StepIcon'
+import Badge from '@mui/material/Badge'
+import Box from '@mui/material/Box'
 import Toolbar from '@mui/material/Toolbar'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
@@ -18,10 +19,14 @@ import Link from '@mui/icons-material/Link'
 import Menu from '@mui/icons-material/Menu'
 import QrCode2 from '@mui/icons-material/QrCode2'
 import RoomPreferences from '@mui/icons-material/RoomPreferences'
+import PeopleAltRounded from '@mui/icons-material/PeopleAltRounded'
 
 import { useContext } from 'react'
+import { Link as RouterLink } from 'react-router-dom'
 
 import { ShellContext } from 'contexts/ShellContext'
+import { routes } from 'config/routes'
+import ChatMark from 'brand/assets/digitable-chat-project-icon.svg'
 
 import { drawerWidth } from './Drawer'
 import { peerListWidth } from './PeerList'
@@ -87,9 +92,11 @@ export const ShellAppBar = ({
   setIsFullscreen,
 }: ShellAppBarProps) => {
   const theme = useTheme()
-  const { peerList, isEmbedded, showRoomControls } = useContext(ShellContext)
+  const { peerList, isEmbedded, showRoomControls, roomId } =
+    useContext(ShellContext)
   const handleQRCodeClick = () => setIsQRCodeDialogOpen(true)
   const onClickFullscreen = () => setIsFullscreen(!isFullscreen)
+  const hasActiveRoom = typeof roomId === 'string'
 
   return (
     <>
@@ -103,54 +110,90 @@ export const ShellAppBar = ({
             variant="regular"
             sx={{
               display: 'flex',
-              flexDirection: 'row',
-              justifyContent: 'right',
+              gap: 1,
             }}
           >
-            {isEmbedded ? null : (
-              <IconButton
-                size="large"
-                edge="start"
-                color="inherit"
-                aria-label="Open menu"
-                sx={{ mr: 2, ...(isDrawerOpen && { display: 'none' }) }}
-                onClick={onDrawerOpen}
-              >
-                <Menu />
-              </IconButton>
-            )}
-
-            {isEmbedded ? null : (
-              <Tooltip title={title}>
-                <Typography
-                  variant="h6"
-                  noWrap
-                  component="div"
+            {!isEmbedded && (
+              <>
+                <IconButton
+                  size="large"
+                  edge="start"
+                  color="inherit"
+                  aria-label="Open menu"
+                  sx={{ ...(isDrawerOpen && { display: 'none' }) }}
+                  onClick={onDrawerOpen}
+                >
+                  <Menu />
+                </IconButton>
+                <Box
+                  component={RouterLink}
+                  to={routes.ROOT}
+                  aria-label="Digitable Chat home"
                   sx={{
-                    marginRight: 'auto',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    minWidth: 0,
+                    mr: 'auto',
+                    color: 'inherit',
+                    textDecoration: 'none',
                   }}
                 >
-                  {title}
-                </Typography>
-              </Tooltip>
+                  <Box
+                    component="img"
+                    src={ChatMark}
+                    alt=""
+                    sx={{ width: 34, height: 34, flexShrink: 0 }}
+                  />
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography
+                      sx={{
+                        fontSize: 12,
+                        fontWeight: 850,
+                        letterSpacing: '0.06em',
+                        lineHeight: 1.1,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Digitable Chat
+                    </Typography>
+                    <Tooltip title={title}>
+                      <Typography
+                        noWrap
+                        sx={{
+                          display: { xs: 'none', sm: 'block' },
+                          maxWidth: { sm: 220, md: 420 },
+                          color: 'text.secondary',
+                          fontFamily: 'var(--digitable-font-mono)',
+                          fontSize: 10,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {title}
+                      </Typography>
+                    </Tooltip>
+                  </Box>
+                </Box>
+              </>
             )}
-            {isEmbedded ? null : (
+
+            {hasActiveRoom && !isEmbedded && (
               <>
-                <Tooltip title="Copy current URL">
+                <Tooltip title="Copy room link">
                   <IconButton
                     size="large"
                     color="inherit"
-                    aria-label="Copy current URL"
+                    aria-label="Copy room link"
                     onClick={onLinkButtonClick}
                   >
                     <Link />
                   </IconButton>
                 </Tooltip>
-                <Tooltip title="Show QR Code">
+                <Tooltip title="Show room QR code">
                   <IconButton
                     size="large"
                     color="inherit"
-                    aria-label="Show QR Code"
+                    aria-label="Show room QR code"
                     onClick={handleQRCodeClick}
                   >
                     <QrCode2 />
@@ -158,53 +201,58 @@ export const ShellAppBar = ({
                 </Tooltip>
               </>
             )}
-            {isEmbedded ? null : (
+            {hasActiveRoom && !isEmbedded ? (
               <Divider
                 orientation="vertical"
                 sx={{ height: theme.spacing(3.5), mx: theme.spacing(1) }}
               />
+            ) : null}
+            {hasActiveRoom && (
+              <>
+                <Tooltip
+                  title={
+                    showRoomControls
+                      ? 'Hide room controls'
+                      : 'Show room controls'
+                  }
+                >
+                  <IconButton
+                    size="large"
+                    color="inherit"
+                    aria-label="Show room controls"
+                    onClick={onRoomControlsClick}
+                  >
+                    <RoomPreferences />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip
+                  title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                >
+                  <IconButton
+                    size="large"
+                    color="inherit"
+                    aria-label="Fullscreen"
+                    onClick={onClickFullscreen}
+                  >
+                    {isFullscreen ? <FullscreenExit /> : <Fullscreen />}
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Show participants and connection status">
+                  <IconButton
+                    size="large"
+                    edge="end"
+                    color="inherit"
+                    aria-label="Peer list"
+                    onClick={onPeerListClick}
+                    sx={{ ml: 0.5 }}
+                  >
+                    <Badge badgeContent={peerList.length + 1} color="primary">
+                      <PeopleAltRounded />
+                    </Badge>
+                  </IconButton>
+                </Tooltip>
+              </>
             )}
-            <Tooltip
-              title={
-                showRoomControls ? 'Hide Room Controls' : 'Show Room Controls'
-              }
-            >
-              <IconButton
-                size="large"
-                color="inherit"
-                aria-label="show room controls"
-                onClick={onRoomControlsClick}
-              >
-                <RoomPreferences />
-              </IconButton>
-            </Tooltip>
-            <Tooltip
-              title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-            >
-              <IconButton
-                size="large"
-                edge="end"
-                color="inherit"
-                aria-label="fullscreen"
-                onClick={onClickFullscreen}
-              >
-                {isFullscreen ? <FullscreenExit /> : <Fullscreen />}
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Click to show peer list">
-              <IconButton
-                size="large"
-                edge="end"
-                color="inherit"
-                aria-label="Peer list"
-                onClick={onPeerListClick}
-                sx={{
-                  ml: 1,
-                }}
-              >
-                <StepIcon icon={peerList.length + 1} />
-              </IconButton>
-            </Tooltip>
           </Toolbar>
         </AppBar>
       </Slide>

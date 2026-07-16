@@ -75,8 +75,17 @@ export const ChatTranscript = ({
         px: `max(${transcriptPaddingX}, ${transcriptMinPadding})`,
         transition: `padding-top ${theme.transitions.duration.short}ms ${theme.transitions.easing.easeInOut}`,
         width: '100%',
+        minHeight: '100%',
+        flexGrow: 1,
       }}
     >
+      {messageLog.length === 0 ? (
+        <Box className="dt-chat-empty">
+          <strong>The room is ready.</strong>
+          Share the room link to invite someone. Messages will appear here once
+          a peer connects.
+        </Box>
+      ) : null}
       {messageLog.map((message, idx) => {
         const previousMessage = messageLog[idx - 1]
         const isFirstMessageInGroup =

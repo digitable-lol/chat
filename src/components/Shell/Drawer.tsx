@@ -25,10 +25,11 @@ import GitInfo from 'react-git-info/macro'
 import { routes } from 'config/routes'
 import { SettingsContext } from 'contexts/SettingsContext'
 import { ColorMode } from 'models/settings'
+import ChatMark from 'brand/assets/digitable-chat-project-icon.svg'
 
 const { commit } = GitInfo()
 
-export const drawerWidth = 240
+export const drawerWidth = 264
 
 export interface DrawerProps extends PropsWithChildren {
   isDrawerOpen: boolean
@@ -64,12 +65,43 @@ export const Drawer = ({ isDrawerOpen, onDrawerClose, theme }: DrawerProps) => {
         sx={theme => ({
           display: 'flex',
           alignItems: 'center',
-          padding: theme.spacing(0, 1),
+          gap: 1,
+          padding: theme.spacing(0, 1.5),
           // necessary for drawer content to be pushed below app bar
           ...theme.mixins.toolbar,
-          justifyContent: 'flex-end',
+          justifyContent: 'space-between',
         })}
       >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box
+            component="img"
+            src={ChatMark}
+            alt=""
+            sx={{ width: 32, height: 32 }}
+          />
+          <Box>
+            <Typography
+              sx={{
+                fontSize: 12,
+                fontWeight: 850,
+                letterSpacing: '0.05em',
+                lineHeight: 1.1,
+                textTransform: 'uppercase',
+              }}
+            >
+              Digitable Chat
+            </Typography>
+            <Typography
+              sx={{
+                color: 'text.secondary',
+                fontFamily: 'var(--digitable-font-mono)',
+                fontSize: 9,
+              }}
+            >
+              encrypted rooms
+            </Typography>
+          </Box>
+        </Box>
         <IconButton onClick={onDrawerClose} aria-label="Close menu">
           {theme.direction === 'ltr' ? (
             <ChevronLeftIcon />
@@ -80,17 +112,23 @@ export const Drawer = ({ isDrawerOpen, onDrawerClose, theme }: DrawerProps) => {
       </Box>
       <Divider />
       <List role="navigation" aria-label="Navigation menu">
-        <Link to={routes.ROOT}>
+        <Link
+          to={routes.ROOT}
+          style={{ color: 'inherit', textDecoration: 'none' }}
+        >
           <ListItem disablePadding>
             <ListItemButton>
               <ListItemIcon>
                 <Home />
               </ListItemIcon>
-              <ListItemText primary="Home" />
+              <ListItemText primary="New room" />
             </ListItemButton>
           </ListItem>
         </Link>
-        <Link to={routes.SETTINGS}>
+        <Link
+          to={routes.SETTINGS}
+          style={{ color: 'inherit', textDecoration: 'none' }}
+        >
           <ListItem disablePadding>
             <ListItemButton>
               <ListItemIcon>
@@ -100,17 +138,23 @@ export const Drawer = ({ isDrawerOpen, onDrawerClose, theme }: DrawerProps) => {
             </ListItemButton>
           </ListItem>
         </Link>
-        <Link to={routes.ABOUT}>
+        <Link
+          to={routes.ABOUT}
+          style={{ color: 'inherit', textDecoration: 'none' }}
+        >
           <ListItem disablePadding>
             <ListItemButton>
               <ListItemIcon>
                 <QuestionMark />
               </ListItemIcon>
-              <ListItemText primary="About" />
+              <ListItemText primary="About Digitable Chat" />
             </ListItemButton>
           </ListItem>
         </Link>
-        <Link to={routes.DISCLAIMER}>
+        <Link
+          to={routes.DISCLAIMER}
+          style={{ color: 'inherit', textDecoration: 'none' }}
+        >
           <ListItem disablePadding>
             <ListItemButton>
               <ListItemIcon>
@@ -129,7 +173,13 @@ export const Drawer = ({ isDrawerOpen, onDrawerClose, theme }: DrawerProps) => {
                 <Brightness4Icon />
               )}
             </ListItemIcon>
-            <ListItemText primary="Change theme" />
+            <ListItemText
+              primary={
+                theme.palette.mode === 'dark'
+                  ? 'Use light theme'
+                  : 'Use dark theme'
+              }
+            />
           </ListItemButton>
         </ListItem>
         <Divider />
@@ -155,6 +205,12 @@ export const Drawer = ({ isDrawerOpen, onDrawerClose, theme }: DrawerProps) => {
           </Typography>
         </ListItem>
       </List>
+      <Box sx={{ mt: 'auto', p: 2, color: 'text.secondary' }}>
+        <Typography sx={{ fontSize: 11, lineHeight: 1.55 }}>
+          Signaling uses standard WebSocket relays. Room traffic stays
+          peer-to-peer and encrypted.
+        </Typography>
+      </Box>
     </MuiDrawer>
   )
 }

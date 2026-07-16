@@ -1,76 +1,31 @@
 import { ManifestOptions } from 'vite-plugin-pwa'
 
 export const manifest: Partial<ManifestOptions> = {
-  short_name: 'Chitchatter',
-  name: 'Chitchatter',
+  short_name: 'Digitable Chat',
+  name: 'Digitable Chat — private peer-to-peer rooms',
   description:
-    'This is a communication tool that is free, open source, and designed for simplicity and security. All communication between you and your online peers is encrypted. There is no trace of your conversation once you leave.',
+    'Ephemeral encrypted rooms with WebSocket signaling and direct WebRTC communication.',
   icons: [
     {
-      src: 'favicon.ico',
-      sizes: '64x64 32x32 24x24 16x16',
-      type: 'image/x-icon',
-    },
-    {
-      src: 'logo192.png',
-      type: 'image/png',
-      sizes: '192x192',
-    },
-    {
-      src: 'logo512.png',
-      type: 'image/png',
-      sizes: '512x512',
+      src: 'logo/digitable-chat.svg',
+      type: 'image/svg+xml',
+      sizes: 'any',
+      purpose: 'any maskable',
     },
   ],
   start_url: './',
-  display: 'fullscreen',
-  theme_color: '#000000',
-  background_color: '#222222',
-  screenshots: [
-    {
-      src: 'screenshots/home-desktop.png',
-      sizes: '2160x1620',
-      type: 'image/png',
-    },
-    {
-      src: 'screenshots/public-room-desktop.png',
-      sizes: '2160x1620',
-      type: 'image/png',
-    },
-    {
-      src: 'screenshots/public-room-desktop-with-video.png',
-      sizes: '2160x1620',
-      type: 'image/png',
-    },
-    {
-      src: 'screenshots/home-mobile-dark.png',
-      sizes: '750x1334',
-      type: 'image/png',
-      form_factor: 'narrow',
-    },
-    {
-      src: 'screenshots/home-mobile-light.png',
-      sizes: '750x1334',
-      type: 'image/png',
-      form_factor: 'narrow',
-    },
-    {
-      src: 'screenshots/public-room-mobile.png',
-      sizes: '750x1334',
-      type: 'image/png',
-      form_factor: 'narrow',
-    },
-  ],
-
+  display: 'standalone',
+  theme_color: '#05080d',
+  background_color: '#05080d',
   shortcuts: [
     {
       name: 'About',
       url: './about',
       icons: [
         {
-          src: 'logo512.png',
-          sizes: '512x512',
-          type: 'image/png',
+          src: 'logo/digitable-chat.svg',
+          sizes: 'any',
+          type: 'image/svg+xml',
           purpose: 'any',
         },
       ],
@@ -80,9 +35,9 @@ export const manifest: Partial<ManifestOptions> = {
       url: './disclaimer',
       icons: [
         {
-          src: 'logo512.png',
-          sizes: '512x512',
-          type: 'image/png',
+          src: 'logo/digitable-chat.svg',
+          sizes: 'any',
+          type: 'image/svg+xml',
           purpose: 'any',
         },
       ],

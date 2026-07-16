@@ -2,15 +2,14 @@ name: Community Room Request
 description: Request a new Community Room
 title: '[Community Room Request]: '
 labels: ['room request']
-assignees:
-  - jeremyckahn
+assignees: []
 body:
   - type: input
     id: room-url
     attributes:
       label: Room URL
-      description: What is the Chitchatter URL for this room?
-      placeholder: ex. https://chitchatter.im/public/room-subject
+      description: What is the Digitable Chat URL for this room?
+      placeholder: ex. https://chat.digitable.life/public/room-subject
     validations:
       required: true
   - type: input

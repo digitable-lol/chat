@@ -21,6 +21,7 @@ const srcPaths = [
   'pages',
   'services',
   'img',
+  'brand',
   'utils',
   'test-utils',
 ]

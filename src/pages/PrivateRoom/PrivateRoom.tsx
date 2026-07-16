@@ -26,7 +26,7 @@ export function PrivateRoom({ userId }: PublicRoomProps) {
   }, [])
 
   useEffect(() => {
-    setTitle(`Room: ${roomId}`)
+    setTitle(`Private room · ${roomId}`)
   }, [roomId, setTitle])
 
   const handlePasswordEntered = async (password: string) => {

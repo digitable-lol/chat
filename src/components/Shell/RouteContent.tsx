@@ -54,6 +54,7 @@ export const RouteContent = ({
       sx={{
         display: 'flex',
         flexDirection: 'column',
+        minWidth: 0,
         width: '100%',
       }}
     >
@@ -67,7 +68,17 @@ export const RouteContent = ({
           })}
         />
       </Collapse>
-      <Box sx={{ overflow: 'auto', flexGrow: 1 }}>{children}</Box>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0,
+          overflow: 'auto',
+          flexGrow: 1,
+        }}
+      >
+        {children}
+      </Box>
     </StyledMain>
   )
 }

@@ -1,6 +1,6 @@
 import { FileTransfer, setStreamSaverMitm } from 'secure-file-transfer'
 
-import { trackerUrls } from 'config/trackerUrls'
+import { fileTrackerUrls } from 'config/fileTrackerUrls'
 import { streamSaverUrl } from 'config/streamSaverUrl'
 import { rtcConfig } from 'config/rtcConfig'
 
@@ -8,7 +8,7 @@ setStreamSaverMitm(streamSaverUrl)
 
 export const fileTransfer = new FileTransfer({
   torrentOpts: {
-    announce: trackerUrls,
+    announce: fileTrackerUrls,
   },
   webtorrentInstanceOpts: {
     tracker: {

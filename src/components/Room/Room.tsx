@@ -7,7 +7,7 @@ import useTheme from '@mui/material/styles/useTheme'
 import { v4 as uuid } from 'uuid'
 
 import { rtcConfig } from 'config/rtcConfig'
-import { trackerUrls } from 'config/trackerUrls'
+import { signalingConfig } from 'config/signalingConfig'
 import { time } from 'lib/Time'
 import { RoomContext } from 'contexts/RoomContext'
 import { ShellContext } from 'contexts/ShellContext'
@@ -36,7 +36,8 @@ export interface RoomProps {
 }
 
 export function Room({
-  appId = `${encodeURI(window.location.origin)}_${process.env.VITE_NAME}`,
+  appId = import.meta.env.VITE_SIGNALING_APP_ID ??
+    `${encodeURI(window.location.origin)}_digitable-chat`,
   getUuid = uuid,
   encryptionService = encryption,
   timeService = time,
@@ -60,10 +61,9 @@ export function Room({
   } = useRoom(
     {
       appId,
-      relayUrls: trackerUrls,
+      ...signalingConfig,
       rtcConfig,
       password,
-      relayRedundancy: 4,
     },
     {
       roomId,
@@ -89,7 +89,7 @@ export function Room({
   return (
     <RoomContext.Provider value={roomContextValue}>
       <Box
-        className="Room"
+        className="Room dt-chat-room"
         sx={{
           height: '100%',
           display: 'flex',
@@ -107,14 +107,16 @@ export function Room({
         >
           <Zoom in={showRoomControls}>
             <Box
+              className="dt-chat-room-controls"
               sx={{
-                alignItems: 'flex-start',
+                alignItems: 'center',
                 display: 'flex',
                 justifyContent: 'center',
                 overflow: 'visible',
                 height: 0,
                 position: 'relative',
                 top: theme.spacing(1),
+                zIndex: 2,
               }}
             >
               <RoomAudioControls peerRoom={peerRoom} />

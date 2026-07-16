@@ -1,6 +1,5 @@
 import { useContext, useEffect, useMemo, useState } from 'react'
-import { BaseRoomConfig } from 'trystero'
-import { RelayConfig } from 'trystero/torrent'
+import { BaseRoomConfig, RelayConfig } from 'trystero'
 import { v4 as uuid } from 'uuid'
 import { useDebounce } from '@react-hook/debounce'
 

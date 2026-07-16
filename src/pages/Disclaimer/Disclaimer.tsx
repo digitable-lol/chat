@@ -14,7 +14,7 @@ export const Disclaimer = () => {
   }, [setTitle])
 
   return (
-    <Box className="Disclaimer max-w-3xl mx-auto p-4">
+    <Box className="Disclaimer dt-chat-document">
       <MuiMarkdown>
         {`
 ### Interpretation and Definitions
@@ -27,10 +27,10 @@ The words of which the initial letter is capitalized have meanings defined under
 
 For the purposes of this Disclaimer:
 
-*   **Project** (referred to as either "the Project", "We", "Us" or "Our" in this Disclaimer) refers to Chitchatter.
+*   **Project** (referred to as either "the Project", "We", "Us" or "Our" in this Disclaimer) refers to Digitable Chat.
 *   **Service** refers to the Website.
 *   **You** means the individual accessing the Service, or the company, or other legal entity on behalf of which such individual is accessing or using the Service, as applicable.
-*   **Website** refers to Chitchatter, accessible from [https://chitchatter.im](https://chitchatter.im)
+*   **Website** refers to Digitable Chat, accessible from [https://chat.digitable.life](https://chat.digitable.life)
 
 ### Disclaimer
 

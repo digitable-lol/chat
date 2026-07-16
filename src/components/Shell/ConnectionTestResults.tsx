@@ -5,8 +5,10 @@ import Typography from '@mui/material/Typography'
 import Circle from '@mui/icons-material/FiberManualRecord'
 import { Box } from '@mui/system'
 import ReportIcon from '@mui/icons-material/Report'
+import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded'
+import WifiTetheringRounded from '@mui/icons-material/WifiTetheringRounded'
 
-import { TrackerConnection } from 'lib/ConnectionTest'
+import { SignalingConnection } from 'lib/ConnectionTest'
 import { ShellContext } from 'contexts/ShellContext'
 
 import { ConnectionTestResults as IConnectionTestResults } from './useConnectionTest'
@@ -15,7 +17,7 @@ interface ConnectionTestResultsProps {
   connectionTestResults: IConnectionTestResults
 }
 export const ConnectionTestResults = ({
-  connectionTestResults: { hasHost, hasRelay, trackerConnection },
+  connectionTestResults: { hasHost, hasRelay, signalingConnection },
 }: ConnectionTestResultsProps) => {
   const { setIsServerConnectionFailureDialogOpen } = useContext(ShellContext)
 
@@ -23,7 +25,7 @@ export const ConnectionTestResults = ({
     setIsServerConnectionFailureDialogOpen(true)
   }
 
-  if (trackerConnection === TrackerConnection.FAILED) {
+  if (signalingConnection === SignalingConnection.FAILED) {
     return (
       <Typography
         variant="subtitle2"
@@ -34,20 +36,20 @@ export const ConnectionTestResults = ({
           sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}
         >
           <ReportIcon color="error" sx={{ mr: 1 }} />
-          <span>Server connection failed</span>
+          <span>Room service unavailable</span>
         </Box>
       </Typography>
     )
   }
 
-  if (trackerConnection !== TrackerConnection.CONNECTED) {
+  if (signalingConnection !== SignalingConnection.CONNECTED) {
     return (
       <Typography variant="subtitle2">
         <Box
           sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}
         >
           <CircularProgress size={16} sx={{ mr: 1.5 }} />
-          <span>Searching for servers...</span>
+          <span>Connecting to room service...</span>
         </Box>
       </Typography>
     )
@@ -57,13 +59,11 @@ export const ConnectionTestResults = ({
     return (
       <Tooltip title="Connections can be established with all peers that also have a full network connection.">
         <Typography variant="subtitle2">
-          <Typography
-            component="span"
-            sx={theme => ({ color: theme.palette.success.main })}
-          >
-            <Circle sx={{ fontSize: 'small' }} />
-          </Typography>{' '}
-          Full network connection
+          <CheckCircleRounded
+            color="success"
+            sx={{ mr: 0.75, fontSize: 18, verticalAlign: 'text-bottom' }}
+          />
+          Ready for restrictive networks
         </Typography>
       </Tooltip>
     )
@@ -71,27 +71,23 @@ export const ConnectionTestResults = ({
     return (
       <Tooltip title="Relay server is unavailable. Connections can only be established when a relay server is not needed for either peer.">
         <Typography variant="subtitle2">
-          <Typography
-            component="span"
-            sx={theme => ({ color: theme.palette.warning.main })}
-          >
-            <Circle sx={{ fontSize: 'small' }} />
-          </Typography>{' '}
-          Partial network connection
+          <WifiTetheringRounded
+            color="warning"
+            sx={{ mr: 0.75, fontSize: 18, verticalAlign: 'text-bottom' }}
+          />
+          Direct connections ready
         </Typography>
       </Tooltip>
     )
   } else {
     return (
-      <Tooltip title="Pairing server is unavailable. Peer connections cannot be established.">
+      <Tooltip title="This browser could not gather a usable local WebRTC candidate. Check browser WebRTC support and network policy.">
         <Typography variant="subtitle2">
-          <Typography
-            component="span"
-            sx={theme => ({ color: theme.palette.error.main })}
-          >
-            <Circle sx={{ fontSize: 'small' }} />
-          </Typography>{' '}
-          No network connection
+          <Circle
+            color="error"
+            sx={{ mr: 0.75, fontSize: 12, verticalAlign: 'text-bottom' }}
+          />
+          WebRTC connection blocked
         </Typography>
       </Tooltip>
     )

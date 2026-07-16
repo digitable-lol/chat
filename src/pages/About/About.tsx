@@ -26,44 +26,48 @@ export const About = () => {
   }, [setTitle])
 
   return (
-    <Box className="About max-w-3xl mx-auto p-4">
+    <Box className="About dt-chat-document">
       <MuiMarkdown>
         {`
-### User Guide
+### Digitable Chat
 
-Chitchatter is a communication tool designed to make secure and private communication accessible to all. Please [see the README](https://github.com/jeremyckahn/chitchatter/blob/develop/README.md) for full project documentation.
+Digitable Chat creates short-lived rooms for text, files, audio, and video. The interface is hosted as a static site; conversation traffic is sent through encrypted WebRTC connections between participants.
 
-#### Chat rooms
+#### How a connection is made
 
-Public rooms can be joined by **anyone** with the room URL. By default, rooms are given a random and unguessable name. You can name your room whatever you'd like, but keep in mind that simpler room names are more guessable by others. For maximum security, consider using the default room name.
+1. MQTT relays over standard secure WebSockets help browsers discover one another.
+2. WebRTC attempts a direct encrypted connection.
+3. When a network blocks direct peer-to-peer traffic, a configured TURN service relays the encrypted WebRTC packets.
 
-Private rooms can only be joined by peers with a matching password. The password must be mutually agreed upon before joining. If peers submit mismatching passwords, they will be in the room but be unable to connect to each other. **No error will be shown** if there is a password mismatch because there is no central arbitrating mechanism by which to detect the mismatch.
+Signaling relays can see connection metadata and room coordination messages, but not the content carried by the encrypted WebRTC data channels. File transfer has its own optional WebTorrent tracker path and does not control chat, audio, or video discovery.
 
-To connect to others, share the room URL with a secure tool such as [Burner Note](https://burnernote.com/) or [Yopass](https://yopass.se/). You will be notified when others join the room.
+#### Room access
 
-##### Peer verification
+Link-access rooms can be joined by **anyone with the full URL**. The default room name is randomly generated on your device; replacing it with a short or common name makes the room easier to guess.
 
-When you connect with a peer, Chitchatter automatically attempts to use [public-key cryptography](https://en.wikipedia.org/wiki/Public-key_cryptography) to verify them. You can see everyone's public keys in the peer list. Feel free to share your public key with others (it is not sensitive information) so that they can uniquely identify you.
+Password-access rooms only connect peers that enter the same password. There is no central server that can compare passwords, so a mismatch looks like an empty room rather than a password error.
 
-All public and private keys are generated locally. Your private key is never sent to any peer or server.
+Share the room URL and, when applicable, the password through a trusted channel.
 
-##### Community rooms
+#### Peer verification
 
-There is [a public list of community rooms](https://github.com/jeremyckahn/chitchatter/wiki/Chitchatter-Community-Rooms) that you can join to discuss various topics.
+Digitable Chat generates public and private verification keys locally. Your private key stays on the device. Public keys are visible in the participant panel and can be compared through another trusted channel when identity matters.
 
-##### Conversation backfilling
+#### Conversation lifetime
 
-Conversation transcripts are erased from local memory as soon as you close the page or navigate away from the room. Conversations are only ever held in volatile memory and never persisted to any disk by Chitchatter.
+Conversation transcripts are held in browser memory and are removed when the page is closed or the room is left. Digitable Chat does not persist message content to its own server.
 
 When a peer joins a **public** room with participants already in it, the new peer will automatically request the transcript of the conversation that has already taken place from the other peers. Once all peers leave the room, the conversation is completely erased. Peers joining a **private** room will not get the conversation transcript backfilled.
 
 Chat transcript history is limited to ${messageTranscriptSizeLimitFormatted} messages for all rooms.
 
-#### Message Authoring
+#### Writing messages
 
 Chat messages support [GitHub-flavored Markdown](https://github.github.com/gfm/) with code syntax highlighting.
 
 Press \`Enter\` to send a message. Press \`Shift + Enter\` to insert a line break. Message size is limited to ${messageCharacterSizeLimitFormatted} characters.
+
+Digitable Chat is built by [Digitable](https://digitable.life) on the open-source [Chitchatter](https://github.com/jeremyckahn/chitchatter) foundation.
         `}
       </MuiMarkdown>
     </Box>

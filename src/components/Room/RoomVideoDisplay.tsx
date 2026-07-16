@@ -119,7 +119,6 @@ export const RoomVideoDisplay = ({
     <Paper
       className="RoomVideoDisplay"
       elevation={3}
-      square
       sx={{
         alignContent: 'center',
         alignItems: 'center',
@@ -127,6 +126,8 @@ export const RoomVideoDisplay = ({
         flexDirection: 'column',
         overflow: 'auto',
         padding: 1,
+        margin: 1,
+        borderRadius: 1.5,
         width: { width },
         height: { height },
       }}

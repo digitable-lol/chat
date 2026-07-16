@@ -5,6 +5,7 @@ import Box from '@mui/material/Box'
 import Tooltip from '@mui/material/Tooltip'
 import Typography, { TypographyProps } from '@mui/material/Typography'
 import Link, { LinkProps } from '@mui/material/Link'
+import { alpha } from '@mui/material/styles'
 import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 // These imports need to be ts-ignored to prevent spurious errors that look
@@ -61,7 +62,7 @@ const componentMap = {
   a: linkFactory({
     variant: 'body1',
     underline: 'always',
-    color: 'primary.contrastText',
+    color: 'inherit',
   }),
   // https://github.com/remarkjs/react-markdown#use-custom-components-syntax-highlight
   code({ node, inline, className, children, style, ...props }: CodeProps) {
@@ -102,15 +103,7 @@ const isYouTubeLink = (message: IMessage) => {
 }
 
 export const Message = ({ message, showAuthor, userId }: MessageProps) => {
-  let backgroundColor: string
-
-  if (message.authorId === userId) {
-    backgroundColor = isMessageReceived(message)
-      ? 'primary.main'
-      : 'primary.light'
-  } else {
-    backgroundColor = 'secondary.main'
-  }
+  const isOwnMessage = message.authorId === userId
 
   return (
     <Box className="Message">
@@ -137,16 +130,27 @@ export const Message = ({ message, showAuthor, userId }: MessageProps) => {
         )}
       >
         <Box
-          sx={{
-            color: 'primary.contrastText',
-            backgroundColor,
+          sx={theme => ({
+            color: isOwnMessage
+              ? theme.palette.primary.contrastText
+              : theme.palette.text.primary,
+            backgroundColor: isOwnMessage
+              ? isMessageReceived(message)
+                ? theme.palette.primary.main
+                : alpha(theme.palette.primary.main, 0.72)
+              : alpha(theme.palette.background.paper, 0.96),
+            border: `1px solid ${
+              isOwnMessage
+                ? alpha(theme.palette.primary.dark, 0.5)
+                : theme.palette.divider
+            }`,
             margin: 0.5,
-            padding: '0.5em 0.75em',
-            borderRadius: 6,
-            float: message.authorId === userId ? 'right' : 'left',
-            transition: 'background-color 1s',
+            padding: '0.65em 0.85em',
+            borderRadius: isOwnMessage ? '14px 4px 14px 14px' : '4px 14px 14px',
+            float: isOwnMessage ? 'right' : 'left',
+            transition: 'background-color 180ms ease',
             wordBreak: 'break-word',
-          }}
+          })}
           maxWidth="85%"
         >
           {isInlineMedia(message) ? (

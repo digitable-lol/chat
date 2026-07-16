@@ -28,7 +28,7 @@ jobs:
         # https://github.com/zaproxy/action-full-scan
         uses: zaproxy/action-full-scan@v0.7.0
         with:
-          target: 'https://chitchatter.im/'
+          target: 'https://chat.digitable.life/'
           rules_file_name: '.zap/rules.tsv'
           artifact_name: 'zap_scan_${{ steps.set-now.outputs.NOW }}'
           allow_issue_writing: false

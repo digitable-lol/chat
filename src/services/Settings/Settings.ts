@@ -23,7 +23,7 @@ export class SettingsService {
       type: 'application/json;charset=utf-8',
     })
 
-    saveAs(blob, `chitchatter-profile-${userSettings.userId}.json`)
+    saveAs(blob, `digitable-chat-profile-${userSettings.userId}.json`)
   }
 
   importSettings = async (file: File) => {
@@ -58,7 +58,7 @@ export class SettingsService {
           )
 
           // NOTE: This determines whether the public and private keys match
-          // and are compatible with Chitchatter.
+          // and are compatible with the original Chitchatter profile format.
           if (decryptedString !== encryptionTestTarget) {
             throw new Error()
           }

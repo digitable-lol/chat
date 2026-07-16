@@ -78,12 +78,12 @@ export const MessageForm = ({
   return (
     <form
       onSubmit={handleMessageSubmit}
-      className={classNames({
+      className={classNames('dt-chat-message-form', {
         'pt-4 px-4': showActiveTypingStatus,
         'p-4': !showActiveTypingStatus,
       })}
     >
-      <Stack direction="row" spacing={2}>
+      <Stack direction="row" spacing={1}>
         <FormControl fullWidth>
           <TextField
             variant="outlined"
@@ -106,6 +106,7 @@ export const MessageForm = ({
           type="submit"
           disabled={!canMessageBeSent()}
           color="primary"
+          size="medium"
         >
           <ArrowUpward />
         </Fab>

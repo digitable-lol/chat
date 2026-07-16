@@ -37,13 +37,14 @@ export const ServerConnectionFailureDialog = () => {
               mr: theme.spacing(1),
             })}
           />
-          Server connection failed
+          Room service unavailable
         </Box>
       </DialogTitle>
       <DialogContent>
         <DialogContentText>
-          A pairing server could not be found. Make sure you are connected to
-          the internet. If you still can't connect, try:
+          Digitable Chat could not reach any MQTT/WebSocket signaling relay.
+          Your conversation data is not sent through those relays, but they are
+          required for peers to discover each other. Try:
         </DialogContentText>
         <Typography
           component="ul"
@@ -55,6 +56,7 @@ export const ServerConnectionFailureDialog = () => {
           <li>Refreshing the page</li>
           <li>Disabling any adblockers</li>
           <li>Connecting to a different network</li>
+          <li>Using a deployment with a custom signaling relay configured</li>
         </Typography>
       </DialogContent>
       <DialogActions>

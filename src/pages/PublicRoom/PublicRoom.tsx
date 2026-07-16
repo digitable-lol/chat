@@ -18,7 +18,7 @@ export function PublicRoom({ userId }: PublicRoomProps) {
   }, [])
 
   useEffect(() => {
-    setTitle(`Room: ${roomId}`)
+    setTitle(`Room · ${roomId}`)
   }, [roomId, setTitle])
 
   return <Room userId={userId} roomId={roomId} />
