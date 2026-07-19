@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   preflight:
@@ -71,6 +71,13 @@ jobs:
             -e "ssh -i ~/.ssh/id_ed25519 -p 22" \
             dist/ \
             "$DIGITABLE_USERNAME@$DIGITABLE_HOST:/www/wwwroot/chat.digitable.life/"
+
+      - name: Publish active GitHub Pages site
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          cname: chat.digitable.life
 
       - name: Verify deployment and reload nginx
         env:
