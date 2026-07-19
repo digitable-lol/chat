@@ -37,7 +37,7 @@ export const ConnectionTestResults = ({
           sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}
         >
           <ReportIcon color="error" sx={{ mr: 1 }} />
-          <span>Server connection failed</span>
+          <span>Signaling unavailable</span>
         </Box>
       </Typography>
     )
@@ -50,7 +50,7 @@ export const ConnectionTestResults = ({
           sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}
         >
           <CircularProgress size={16} sx={{ mr: 1.5 }} />
-          <span>Searching for servers...</span>
+          <span>Connecting to signaling...</span>
         </Box>
       </Typography>
     )
@@ -65,7 +65,7 @@ export const ConnectionTestResults = ({
 
   if (hasFullConnectivity) {
     return (
-      <Tooltip title="Connections can be established with all peers that also have a full network connection.">
+      <Tooltip title="Signaling is ready. The app will try a direct encrypted WebRTC connection first and can use TURN when a network blocks it.">
         <Typography variant="subtitle2">
           <Typography
             component="span"
@@ -73,13 +73,13 @@ export const ConnectionTestResults = ({
           >
             <Circle sx={{ fontSize: 'small' }} />
           </Typography>{' '}
-          Full network connection
+          Ready: direct + TURN fallback
         </Typography>
       </Tooltip>
     )
   } else if (hasHost) {
     return (
-      <Tooltip title="Relay server is unavailable. Connections can only be established when a relay server is not needed for either peer.">
+      <Tooltip title="Signaling is ready, but TURN is unavailable or disabled. Direct encrypted WebRTC connections can still work.">
         <Typography variant="subtitle2">
           <Typography
             component="span"
@@ -87,13 +87,13 @@ export const ConnectionTestResults = ({
           >
             <Circle sx={{ fontSize: 'small' }} />
           </Typography>{' '}
-          Partial network connection
+          Ready: direct connections only
         </Typography>
       </Tooltip>
     )
   } else {
     return (
-      <Tooltip title="Pairing server is unavailable. Peer connections cannot be established.">
+      <Tooltip title="The browser cannot reach an MQTT signaling relay, so it cannot find other participants yet.">
         <Typography variant="subtitle2">
           <Typography
             component="span"
@@ -101,7 +101,7 @@ export const ConnectionTestResults = ({
           >
             <Circle sx={{ fontSize: 'small' }} />
           </Typography>{' '}
-          No network connection
+          Offline: no signaling relay
         </Typography>
       </Tooltip>
     )

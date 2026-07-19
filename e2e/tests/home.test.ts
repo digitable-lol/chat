@@ -47,6 +47,25 @@ test.describe('Home Page', () => {
     await expect(getEmbedCodeButton).toBeVisible()
   })
 
+  test('should explain the connection in English and Russian', async ({
+    page,
+  }) => {
+    await page.goto('/#how-it-connects')
+    await page.waitForLoadState('networkidle')
+
+    await expect(
+      page.getByRole('heading', { name: /how the connection works/i })
+    ).toBeVisible()
+    await expect(page.getByText(/Relays help two browsers meet/i)).toBeVisible()
+    await expect(
+      page.getByText(/Ретрансляторы помогают двум браузерам встретиться/i)
+    ).toBeVisible()
+    await expect(page.getByText(/Direct — device to device/i)).toBeVisible()
+    await expect(
+      page.getByText(/Relay — encrypted through TURN/i)
+    ).toBeVisible()
+  })
+
   test('should have a room name input', async ({ page }) => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')

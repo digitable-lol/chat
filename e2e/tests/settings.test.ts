@@ -169,8 +169,12 @@ test.describe('Settings and Preferences', () => {
     await expect(themeButton).toBeVisible()
 
     // Check current theme state and toggle
-    const lightModeIcon = page.locator('svg[data-testid="Brightness7Icon"]')
-    const darkModeIcon = page.locator('svg[data-testid="Brightness4Icon"]')
+    const lightModeIcon = page.locator(
+      'svg[data-testid="Brightness7RoundedIcon"]'
+    )
+    const darkModeIcon = page.locator(
+      'svg[data-testid="Brightness4RoundedIcon"]'
+    )
 
     await expect(lightModeIcon).toBeVisible()
     await expect(darkModeIcon).not.toBeVisible()

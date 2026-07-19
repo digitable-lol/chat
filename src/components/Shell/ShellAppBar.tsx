@@ -16,7 +16,7 @@ import ExpandMore from '@mui/icons-material/ExpandMore'
 import Fullscreen from '@mui/icons-material/Fullscreen'
 import FullscreenExit from '@mui/icons-material/FullscreenExit'
 import Link from '@mui/icons-material/Link'
-import Menu from '@mui/icons-material/Menu'
+import MenuRounded from '@mui/icons-material/MenuRounded'
 import QrCode2 from '@mui/icons-material/QrCode2'
 import RoomPreferences from '@mui/icons-material/RoomPreferences'
 import PeopleAltRounded from '@mui/icons-material/PeopleAltRounded'
@@ -120,10 +120,17 @@ export const ShellAppBar = ({
                   edge="start"
                   color="inherit"
                   aria-label="Open menu"
-                  sx={{ ...(isDrawerOpen && { display: 'none' }) }}
+                  sx={{
+                    width: 42,
+                    height: 42,
+                    border: 1,
+                    borderColor: 'divider',
+                    backgroundColor: 'rgba(0, 229, 229, 0.05)',
+                    ...(isDrawerOpen && { display: 'none' }),
+                  }}
                   onClick={onDrawerOpen}
                 >
-                  <Menu />
+                  <MenuRounded />
                 </IconButton>
                 <Box
                   component={RouterLink}

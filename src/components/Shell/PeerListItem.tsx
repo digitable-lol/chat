@@ -106,7 +106,7 @@ export const PeerListItem = ({
                 title={
                   isPeerConnectionDirect ? (
                     <>
-                      You are connected directly to{' '}
+                      Direct WebRTC: your device has an encrypted connection to{' '}
                       <PeerNameDisplay
                         sx={{ fontSize: 'inherit', fontWeight: 'inherit' }}
                       >
@@ -115,14 +115,15 @@ export const PeerListItem = ({
                     </>
                   ) : (
                     <>
-                      You are connected to{' '}
+                      TURN fallback: encrypted traffic to{' '}
                       <PeerNameDisplay
                         sx={{ fontSize: 'inherit', fontWeight: 'inherit' }}
                       >
                         {peer.userId}
                       </PeerNameDisplay>{' '}
-                      via a relay server. Your connection is still private and
-                      encrypted, but performance may be degraded.
+                      passes through a relay because a direct route was blocked.
+                      The relay cannot read the message content, but performance
+                      may be lower.
                     </>
                   )
                 }

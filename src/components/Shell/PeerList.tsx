@@ -89,7 +89,19 @@ export const PeerList = ({
               }}
             >
               <CircularProgress size={16} sx={{ mr: 1.5 }} />
-              <span>Searching for peers...</span>
+              <Box>
+                <strong>Waiting for another participant</strong>
+                <Box
+                  component="span"
+                  sx={{
+                    display: 'block',
+                    color: 'text.secondary',
+                    fontSize: 12,
+                  }}
+                >
+                  Signaling is ready. Share the room link to connect.
+                </Box>
+              </Box>
             </Box>
           </>
         ) : null}
