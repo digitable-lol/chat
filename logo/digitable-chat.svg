@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Digitable Chat</title>
+  <desc id="desc">A connected speech bubble on a dark engineering grid.</desc>
+  <rect width="256" height="256" rx="28" fill="#05080d"/>
+  <path d="M28 52h200M28 128h200M28 204h200M52 28v200M128 28v200M204 28v200" stroke="#15566a" stroke-width="3" opacity=".42"/>
+  <path d="M57 66h142a17 17 0 0 1 17 17v79a17 17 0 0 1-17 17h-69l-39 31 8-31H57a17 17 0 0 1-17-17V83a17 17 0 0 1 17-17Z" fill="#071018" stroke="#00e5e5" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M78 112h100M78 139h76" stroke="#15566a" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="81" cy="94" r="8" fill="#ffc247"/>
+  <circle cx="128" cy="94" r="8" fill="#00e5e5"/>
+  <circle cx="175" cy="94" r="8" fill="#b65cff"/>
+  <path d="M81 94h47m0 0h47" stroke="#f5f7fa" stroke-width="3" opacity=".55"/>
+</svg>
