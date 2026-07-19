@@ -2,7 +2,8 @@ import './polyfills'
 import ReactDOM from 'react-dom/client'
 import 'typeface-public-sans'
 
-import './index.sass'
+import 'modern-normalize/modern-normalize.css'
+import './index.css'
 import './brand/digitable-chat.css'
 
 import { ThemeProvider, createTheme } from '@mui/material/styles'
@@ -26,6 +27,7 @@ ReactDOM.createRoot(document.createElement('div')).render(
 )
 
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement)
+
 root.render(<Init />)
 
 // If you want to start measuring performance in your app, pass a function

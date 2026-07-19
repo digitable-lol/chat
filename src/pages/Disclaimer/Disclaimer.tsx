@@ -1,20 +1,30 @@
 import { useContext, useEffect } from 'react'
 import Box from '@mui/material/Box'
 import MuiMarkdown from 'mui-markdown'
+import useTheme from '@mui/material/styles/useTheme'
 
 import { ShellContext } from 'contexts/ShellContext'
 
-import './index.sass'
-
 export const Disclaimer = () => {
   const { setTitle } = useContext(ShellContext)
+  const theme = useTheme()
 
   useEffect(() => {
     setTitle('Disclaimer')
   }, [setTitle])
 
   return (
-    <Box className="Disclaimer dt-chat-document">
+    <Box
+      className="Disclaimer"
+      sx={{
+        p: 2,
+        mx: 'auto',
+        maxWidth: theme.breakpoints.values.md,
+        '& p': {
+          mb: 2,
+        },
+      }}
+    >
       <MuiMarkdown>
         {`
 ### Interpretation and Definitions
@@ -27,10 +37,10 @@ The words of which the initial letter is capitalized have meanings defined under
 
 For the purposes of this Disclaimer:
 
-*   **Project** (referred to as either "the Project", "We", "Us" or "Our" in this Disclaimer) refers to Digitable Chat.
+*   **Project** (referred to as either "the Project", "We", "Us" or "Our" in this Disclaimer) refers to Chitchatter.
 *   **Service** refers to the Website.
 *   **You** means the individual accessing the Service, or the company, or other legal entity on behalf of which such individual is accessing or using the Service, as applicable.
-*   **Website** refers to Digitable Chat, accessible from [https://chat.digitable.life](https://chat.digitable.life)
+*   **Website** refers to Chitchatter, accessible from [https://chitchatter.im](https://chitchatter.im)
 
 ### Disclaimer
 

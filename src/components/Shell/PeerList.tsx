@@ -17,7 +17,7 @@ import {
   PeerAudioChannelState,
 } from 'models/chat'
 import { PeerConnectionType } from 'lib/PeerRoom'
-import { SignalingConnection } from 'lib/ConnectionTest'
+import { TrackerConnection } from 'lib/ConnectionTest'
 
 import { PeerListHeader } from './PeerListHeader'
 import { PeerListItem } from './PeerListItem'
@@ -71,12 +71,13 @@ export const PeerList = ({
             peer={peer}
             peerConnectionTypes={peerConnectionTypes}
             peerAudioChannels={peerAudioChannels}
+            roomId={roomId ?? ''}
           />
         ))}
         {peerList.length === 0 &&
         typeof roomId === 'string' &&
-        connectionTestResults.signalingConnection ===
-          SignalingConnection.CONNECTED &&
+        connectionTestResults.trackerConnection ===
+          TrackerConnection.CONNECTED &&
         connectionTestResults.hasHost ? (
           <>
             <Box

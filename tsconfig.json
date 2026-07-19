@@ -16,8 +16,12 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "baseUrl": "src",
-    "allowImportingTsExtensions": true,
-    "types": ["vite-plugin-pwa/client", "vite/client"]
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "paths": {
+      "trystero/torrent": ["../node_modules/trystero/src/torrent.d.ts"]
+    },
+    "types": ["vite-plugin-pwa/client", "vite/client", "vitest/globals"]
   },
-  "include": ["src"]
+  "include": ["src", "e2e"]
 }

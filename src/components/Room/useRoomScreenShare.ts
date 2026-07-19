@@ -3,7 +3,7 @@ import { useContext, useEffect, useCallback, useState } from 'react'
 import { isRecord } from 'lib/type-guards'
 import { RoomContext } from 'contexts/RoomContext'
 import { ShellContext } from 'contexts/ShellContext'
-import { PeerActions } from 'models/network'
+import { PeerAction } from 'models/network'
 import {
   ScreenShareState,
   Peer,
@@ -11,7 +11,14 @@ import {
   AudioChannelName,
   AudioState,
 } from 'models/chat'
-import { PeerRoom, PeerHookType, PeerStreamType } from 'lib/PeerRoom'
+import {
+  PeerRoom,
+  PeerHookType,
+  PeerStreamType,
+  ActionNamespace,
+} from 'lib/PeerRoom'
+import { usePeerAction } from 'hooks/usePeerAction'
+import { MessageContext } from 'trystero'
 
 interface UseRoomScreenShareConfig {
   peerRoom: PeerRoom
@@ -23,7 +30,6 @@ export function useRoomScreenShare({ peerRoom }: UseRoomScreenShareConfig) {
   const [isSharingScreen, setIsSharingScreen] = useState(false)
 
   const {
-    peerList,
     setPeerList,
     setScreenState,
     setAudioChannelState,
@@ -37,25 +43,29 @@ export function useRoomScreenShare({ peerRoom }: UseRoomScreenShareConfig) {
     setSelfScreenStream,
   } = roomContext
 
-  const [sendScreenShare, receiveScreenShare] =
-    peerRoom.makeAction<ScreenShareState>(PeerActions.SCREEN_SHARE)
+  const [sendScreenShare] = usePeerAction<ScreenShareState>({
+    namespace: ActionNamespace.GROUP,
+    peerAction: PeerAction.SCREEN_SHARE,
+    peerRoom,
+    onReceive: (screenState, { peerId }: MessageContext) => {
+      setPeerList(peerList => {
+        const newPeerList = peerList.map(peer => {
+          const newPeer: Peer = { ...peer }
 
-  receiveScreenShare((screenState, peerId) => {
-    const newPeerList = peerList.map(peer => {
-      const newPeer: Peer = { ...peer }
+          if (peer.peerId === peerId) {
+            newPeer.screenShareState = screenState
 
-      if (peer.peerId === peerId) {
-        newPeer.screenShareState = screenState
+            if (screenState === ScreenShareState.NOT_SHARING) {
+              deletePeerScreen(peerId)
+            }
+          }
 
-        if (screenState === ScreenShareState.NOT_SHARING) {
-          deletePeerScreen(peerId)
-        }
-      }
+          return newPeer
+        })
 
-      return newPeer
-    })
-
-    setPeerList(newPeerList)
+        return newPeerList
+      })
+    },
   })
 
   peerRoom.onPeerStream(PeerStreamType.SCREEN, (stream, peerId, metadata) => {
@@ -83,6 +93,7 @@ export function useRoomScreenShare({ peerRoom }: UseRoomScreenShareConfig) {
 
       if (audioTracks.length > 0) {
         const audio = new Audio()
+
         audio.srcObject = stream
         audio.autoplay = true
 
@@ -116,8 +127,8 @@ export function useRoomScreenShare({ peerRoom }: UseRoomScreenShareConfig) {
       video: true,
     })
 
-    peerRoom.addStream(displayMedia, null, {
-      type: StreamType.SCREEN_SHARE,
+    peerRoom.addStream(displayMedia, {
+      metadata: { type: StreamType.SCREEN_SHARE },
     })
 
     setSelfScreenStream(displayMedia)
@@ -130,7 +141,7 @@ export function useRoomScreenShare({ peerRoom }: UseRoomScreenShareConfig) {
     if (!selfScreenStream) return
 
     cleanupScreenStream()
-    peerRoom.removeStream(selfScreenStream, peerRoom.getPeers())
+    peerRoom.removeStream(selfScreenStream, { target: peerRoom.getPeers() })
     sendScreenShare(ScreenShareState.NOT_SHARING)
     setScreenState(ScreenShareState.NOT_SHARING)
     setSelfScreenStream(null)
@@ -184,15 +195,16 @@ export function useRoomScreenShare({ peerRoom }: UseRoomScreenShareConfig) {
 
   const handleScreenForNewPeer = (peerId: string) => {
     if (selfScreenStream) {
-      peerRoom.addStream(selfScreenStream, peerId, {
-        type: StreamType.SCREEN_SHARE,
+      peerRoom.addStream(selfScreenStream, {
+        target: peerId,
+        metadata: { type: StreamType.SCREEN_SHARE },
       })
     }
   }
 
   const handleScreenForLeavingPeer = (peerId: string) => {
     if (selfScreenStream) {
-      peerRoom.removeStream(selfScreenStream, peerId)
+      peerRoom.removeStream(selfScreenStream, { target: peerId })
     }
 
     deletePeerScreen(peerId)

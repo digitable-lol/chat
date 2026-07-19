@@ -13,6 +13,9 @@ const StyledMain = styled('main', {
   isDrawerOpen?: boolean
   isPeerListOpen?: boolean
 }>(({ theme, isDrawerOpen, isPeerListOpen }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  width: '100%',
   transition: theme.transitions.create('margin', {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
@@ -48,16 +51,7 @@ export const RouteContent = ({
   showAppBar,
 }: RouteContentProps) => {
   return (
-    <StyledMain
-      isDrawerOpen={isDrawerOpen}
-      isPeerListOpen={isPeerListOpen}
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        minWidth: 0,
-        width: '100%',
-      }}
-    >
+    <StyledMain isDrawerOpen={isDrawerOpen} isPeerListOpen={isPeerListOpen}>
       {/*
       This Collapse acts as a spacer to allow the controls to hide behind the AppBar.
       */}
@@ -68,17 +62,7 @@ export const RouteContent = ({
           })}
         />
       </Collapse>
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 0,
-          overflow: 'auto',
-          flexGrow: 1,
-        }}
-      >
-        {children}
-      </Box>
+      <Box sx={{ overflow: 'auto', flexGrow: 1 }}>{children}</Box>
     </StyledMain>
   )
 }

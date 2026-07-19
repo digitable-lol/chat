@@ -1,33 +1,38 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import localforage from 'localforage'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
   Navigate,
+  Route,
+  BrowserRouter,
+  HashRouter,
+  Routes,
 } from 'react-router-dom'
-import localforage from 'localforage'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 
-import { StorageContext } from 'contexts/StorageContext'
-import { SettingsContext } from 'contexts/SettingsContext'
-import { homepageUrl, routes } from 'config/routes'
-import { Home } from 'pages/Home'
-import { About } from 'pages/About'
-import { Disclaimer } from 'pages/Disclaimer'
-import { Settings } from 'pages/Settings'
-import { PublicRoom } from 'pages/PublicRoom'
-import { PrivateRoom } from 'pages/PrivateRoom'
-import { UserSettings } from 'models/settings'
-import { PersistedStorageKeys } from 'models/storage'
-import { QueryParamKeys } from 'models/shell'
-import { Shell } from 'components/Shell'
 import { WholePageLoading } from 'components/Loading/Loading'
+import { Shell } from 'components/Shell'
+import { isEnhancedConnectivityAvailable } from 'config/enhancedConnectivity'
+import { homepageUrl, routes } from 'config/routes'
+import { SettingsContext } from 'contexts/SettingsContext'
+import { StorageContext } from 'contexts/StorageContext'
 import {
   isConfigMessageEvent,
   PostMessageEvent,
   PostMessageEventName,
 } from 'models/sdk'
+import { RouterType } from 'models/router'
+import { UserSettings } from 'models/settings'
+import { QueryParamKeys } from 'models/shell'
+import { PersistedStorageKeys } from 'models/storage'
+import { About } from 'pages/About'
+import { Disclaimer } from 'pages/Disclaimer'
+import { Home } from 'pages/Home'
+import { PrivateRoom } from 'pages/PrivateRoom'
+import { PublicRoom } from 'pages/PublicRoom'
+import { Settings } from 'pages/Settings'
 import { serialization, SerializedUserSettings } from 'services/Serialization'
+import { routerType } from 'config/router'
 
 export interface BootstrapProps {
   persistedStorage?: typeof localforage
@@ -36,6 +41,17 @@ export interface BootstrapProps {
 }
 
 const configListenerTimeout = 3000
+
+// Create QueryClient instance for React Query
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 3,
+      staleTime: Infinity,
+      gcTime: Infinity,
+    },
+  },
+})
 
 const getConfigFromSdk = () => {
   const queryParams = new URLSearchParams(window.location.search)
@@ -83,6 +99,7 @@ const Bootstrap = ({
   initialUserSettings,
   serializationService = serialization,
 }: BootstrapProps) => {
+  const Router = routerType === RouterType.HASH ? HashRouter : BrowserRouter
   const queryParams = useMemo(
     () => new URLSearchParams(window.location.search),
     []
@@ -135,29 +152,30 @@ const Bootstrap = ({
         )
 
       const computeUserSettings = async (): Promise<UserSettings> => {
+        let finalSettings = {
+          ...userSettings,
+          ...persistedUserSettings,
+        }
+
         if (queryParams.has(QueryParamKeys.GET_SDK_CONFIG)) {
           try {
             const configFromSdk = await getConfigFromSdk()
 
-            return {
-              ...userSettings,
-              ...persistedUserSettings,
+            finalSettings = {
+              ...finalSettings,
               ...configFromSdk,
             }
-          } catch (e) {
+          } catch (_e) {
             console.error(
               'Digitable Chat configuration from parent frame could not be loaded'
             )
           }
         }
-
-        return {
-          ...userSettings,
-          ...persistedUserSettings,
-        }
+        return finalSettings
       }
 
       const computedUserSettings = await computeUserSettings()
+
       setUserSettings(computedUserSettings)
       setHasLoadedSettings(true)
 
@@ -175,9 +193,9 @@ const Bootstrap = ({
   ])
 
   useEffect(() => {
-    const queryParams = new URLSearchParams(window.location.search)
+    const freshQueryParams = new URLSearchParams(window.location.search)
 
-    if (!queryParams.has(QueryParamKeys.IS_EMBEDDED)) return
+    if (!freshQueryParams.has(QueryParamKeys.IS_EMBEDDED)) return
 
     const handleConfigMessage = (event: MessageEvent) => {
       if (!hasLoadedSettings) return
@@ -209,53 +227,66 @@ const Bootstrap = ({
 
       setUserSettings(newSettings)
     },
-    getUserSettings: () => ({ ...userSettings }),
+    getUserSettings: () => {
+      return {
+        ...userSettings,
+        // If enhanced connectivity is not available, always return false
+        isEnhancedConnectivityEnabled: isEnhancedConnectivityAvailable
+          ? userSettings.isEnhancedConnectivityEnabled
+          : false,
+      }
+    },
   }
 
   const storageContextValue = {
     getPersistedStorage: () => persistedStorage,
   }
 
+  const routerProps =
+    Router === BrowserRouter ? { basename: homepageUrl.pathname } : {}
+
   return (
-    <Router basename={homepageUrl.pathname}>
-      <StorageContext.Provider value={storageContextValue}>
-        <SettingsContext.Provider value={settingsContextValue}>
-          {hasLoadedSettings ? (
-            <Shell appNeedsUpdate={appNeedsUpdate} userPeerId={userId}>
-              <Routes>
-                {[routes.ROOT, routes.INDEX_HTML].map(path => (
+    <QueryClientProvider client={queryClient}>
+      <Router {...routerProps}>
+        <StorageContext.Provider value={storageContextValue}>
+          <SettingsContext.Provider value={settingsContextValue}>
+            {hasLoadedSettings ? (
+              <Shell appNeedsUpdate={appNeedsUpdate} userPeerId={userId}>
+                <Routes>
+                  {[routes.ROOT, routes.INDEX_HTML].map(path => (
+                    <Route
+                      key={path}
+                      path={path}
+                      element={<Home userId={userId} />}
+                    />
+                  ))}
+                  <Route path={routes.ABOUT} element={<About />} />
+                  <Route path={routes.DISCLAIMER} element={<Disclaimer />} />
                   <Route
-                    key={path}
-                    path={path}
-                    element={<Home userId={userId} />}
+                    path={routes.SETTINGS}
+                    element={<Settings userId={userId} />}
                   />
-                ))}
-                <Route path={routes.ABOUT} element={<About />} />
-                <Route path={routes.DISCLAIMER} element={<Disclaimer />} />
-                <Route
-                  path={routes.SETTINGS}
-                  element={<Settings userId={userId} />}
-                />
-                <Route
-                  path={routes.PUBLIC_ROOM}
-                  element={<PublicRoom userId={userId} />}
-                />
-                <Route
-                  path={routes.PRIVATE_ROOM}
-                  element={<PrivateRoom userId={userId} />}
-                />
-                <Route
-                  path="*"
-                  element={<Navigate to={routes.ROOT} replace />}
-                />
-              </Routes>
-            </Shell>
-          ) : (
-            <WholePageLoading />
-          )}
-        </SettingsContext.Provider>
-      </StorageContext.Provider>
-    </Router>
+                  <Route
+                    path={routes.PUBLIC_ROOM}
+                    element={<PublicRoom userId={userId} />}
+                  />
+                  <Route
+                    path={routes.PRIVATE_ROOM}
+                    element={<PrivateRoom userId={userId} />}
+                  />
+                  <Route
+                    path="*"
+                    element={<Navigate to={routes.ROOT} replace />}
+                  />
+                </Routes>
+              </Shell>
+            ) : (
+              <WholePageLoading />
+            )}
+          </SettingsContext.Provider>
+        </StorageContext.Provider>
+      </Router>
+    </QueryClientProvider>
   )
 }
 

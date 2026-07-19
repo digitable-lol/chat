@@ -3,6 +3,7 @@ import { PropsWithChildren } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter as Router, Route, Routes } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { userSettingsContextStubFactory } from 'test-utils/stubs/settingsContext'
 import { mockEncryptionService } from 'test-utils/mocks/mockEncryptionService'
@@ -24,13 +25,40 @@ const mockMessagedSender = vi.fn().mockImplementation(() => Promise.resolve([]))
 
 const mockTimeService = new Time()
 const mockNowTime = 1234
+
 mockTimeService.now = () => mockNowTime
+
+// Mock fetch for TURN server API
+global.fetch = vi.fn().mockResolvedValue({
+  ok: true,
+  headers: {
+    get: vi.fn().mockReturnValue('application/json'),
+  },
+  json: vi.fn().mockResolvedValue({
+    urls: ['turn:relay1.expressturn.com:3478'],
+    username: 'efQUQ79N77B5BNVVKF',
+    credential: 'N4EAUgpjMzPLrxSS',
+  }),
+})
+
+// Create QueryClient for tests
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+})
 
 vi.mock('../../lib/Audio')
 
-vi.mock('trystero/mqtt', () => ({
+vi.mock('@trystero-p2p/mqtt', () => ({
   joinRoom: () => ({
-    makeAction: () => [mockMessagedSender, () => {}, () => {}],
+    makeAction: () => ({
+      send: mockMessagedSender,
+      onMessage: null,
+      onReceiveProgress: null,
+    }),
     ping: () => Promise.resolve(0),
     leave: () => {},
     getPeers: () => [],
@@ -39,22 +67,24 @@ vi.mock('trystero/mqtt', () => ({
     addTrack: () => [Promise.resolve()],
     removeTrack: () => {},
     replaceTrack: () => [Promise.resolve()],
-    onPeerJoin: () => {},
-    onPeerLeave: () => {},
-    onPeerStream: () => {},
-    onPeerTrack: () => {},
+    onPeerJoin: null,
+    onPeerLeave: null,
+    onPeerStream: null,
+    onPeerTrack: null,
   }),
 }))
 
 const RouteStub = ({ children }: PropsWithChildren) => {
   return (
-    <Router initialEntries={['/public/abc123']}>
-      <SettingsContext.Provider value={userSettingsStub}>
-        <Routes>
-          <Route path="/public/:roomId" element={children}></Route>
-        </Routes>
-      </SettingsContext.Provider>
-    </Router>
+    <QueryClientProvider client={queryClient}>
+      <Router initialEntries={['/public/abc123']}>
+        <SettingsContext.Provider value={userSettingsStub}>
+          <Routes>
+            <Route path="/public/:roomId" element={children}></Route>
+          </Routes>
+        </SettingsContext.Provider>
+      </Router>
+    </QueryClientProvider>
   )
 }
 
@@ -85,6 +115,7 @@ describe('Room', () => {
     )
 
     const sendButton = screen.getByLabelText('Send')
+
     expect(sendButton).toBeDisabled()
   })
 
@@ -119,7 +150,7 @@ describe('Room', () => {
     expect(textInput).toHaveValue('')
   })
 
-  test('message is sent to peer', async () => {
+  test('message is sent to peers', async () => {
     render(
       <RouteStub>
         <RoomStub
@@ -136,11 +167,14 @@ describe('Room', () => {
     await userEvent.type(textInput, 'hello')
     await userEvent.click(sendButton)
 
-    expect(mockMessagedSender).toHaveBeenCalledWith({
-      authorId: mockUserId,
-      text: 'hello',
-      timeSent: mockNowTime,
-      id: 'abc123',
-    })
+    expect(mockMessagedSender).toHaveBeenCalledWith(
+      {
+        authorId: mockUserId,
+        text: 'hello',
+        timeSent: mockNowTime,
+        id: 'abc123',
+      },
+      undefined
+    )
   })
 })

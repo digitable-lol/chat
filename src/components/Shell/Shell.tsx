@@ -1,3 +1,11 @@
+import { AlertColor } from '@mui/material/Alert'
+import Box from '@mui/material/Box'
+import CssBaseline from '@mui/material/CssBaseline'
+import MuiDrawer from '@mui/material/Drawer'
+import Link from '@mui/material/Link'
+import { ThemeProvider } from '@mui/material/styles'
+import Typography from '@mui/material/Typography'
+import { useWindowSize } from '@react-hook/window-size'
 import {
   PropsWithChildren,
   SyntheticEvent,
@@ -5,46 +13,45 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
-import CssBaseline from '@mui/material/CssBaseline'
-import { ThemeProvider } from '@mui/material/styles'
-import Box from '@mui/material/Box'
-import Typography from '@mui/material/Typography'
-import { AlertColor } from '@mui/material/Alert'
-import MuiDrawer from '@mui/material/Drawer'
-import Link from '@mui/material/Link'
 
-import { ShellContext } from 'contexts/ShellContext'
+import { ErrorBoundary } from 'components/ErrorBoundary'
 import { SettingsContext } from 'contexts/SettingsContext'
-import { AlertOptions, QueryParamKeys } from 'models/shell'
 import {
+  MessageLog,
+  ShellContext,
+  ShellMessageLog,
+} from 'contexts/ShellContext'
+import { PeerConnectionType, PeerRoom } from 'lib/PeerRoom'
+import {
+  AudioChannel,
+  AudioChannelName,
   AudioState,
+  Peer,
+  PeerAudioChannelState,
   ScreenShareState,
   VideoState,
-  Peer,
-  AudioChannel,
-  PeerAudioChannelState,
-  AudioChannelName,
 } from 'models/chat'
-import { ErrorBoundary } from 'components/ErrorBoundary'
-import { PeerConnectionType } from 'lib/PeerRoom'
-import { createDigitableTheme } from 'brand/theme'
+import { AlertOptions, QueryParamKeys } from 'models/shell'
 
+import { allowAdvancedRoomLinkSharing } from './constants'
 import { Drawer } from './Drawer'
-import { UpgradeDialog } from './UpgradeDialog'
-import { ShellAppBar } from './ShellAppBar'
-import { NotificationArea } from './NotificationArea'
-import { RouteContent } from './RouteContent'
-import { PeerList, peerListWidth } from './PeerList'
-import { QRCodeDialog } from './QRCodeDialog'
-import { RoomShareDialog } from './RoomShareDialog'
-import { useConnectionTest } from './useConnectionTest'
-import { ServerConnectionFailureDialog } from './ServerConnectionFailureDialog'
 import {
   EnvironmentUnsupportedDialog,
   isEnvironmentSupported,
 } from './EnvironmentUnsupportedDialog'
+import { NotificationArea } from './NotificationArea'
+import { PeerList, peerListWidth } from './PeerList'
+import { QRCodeDialog } from './QRCodeDialog'
+import { RoomShareDialog } from './RoomShareDialog'
+import { RouteContent } from './RouteContent'
+import { ServerConnectionFailureDialog } from './ServerConnectionFailureDialog'
+import { ShellAppBar } from './ShellAppBar'
+import { UpgradeDialog } from './UpgradeDialog'
+import { useConnectionTest } from './useConnectionTest'
+import { useShellTheme } from './useShellTheme'
 
 export interface ShellProps extends PropsWithChildren {
   userPeerId: string
@@ -57,12 +64,14 @@ export const Shell = ({ appNeedsUpdate, children, userPeerId }: ShellProps) => {
   const { getUserSettings, updateUserSettings } = useContext(SettingsContext)
   const isEmbedded = queryParams.get(QueryParamKeys.IS_EMBEDDED) !== null
 
-  const { colorMode } = getUserSettings()
+  const theme = useShellTheme()
 
-  const theme = useMemo(() => createDigitableTheme(colorMode), [colorMode])
+  const [windowWidth] = useWindowSize()
+  const defaultSidebarsOpen = windowWidth >= theme.breakpoints.values.lg
 
+  const peerRoomRef = useRef<PeerRoom>(null)
   const [isAlertShowing, setIsAlertShowing] = useState(false)
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(defaultSidebarsOpen)
   const [isQRCodeDialogOpen, setIsQRCodeDialogOpen] = useState(false)
   const [isRoomShareDialogOpen, setIsRoomShareDialogOpen] = useState(false)
   const [alertSeverity, setAlertSeverity] = useState<AlertColor>('info')
@@ -73,7 +82,7 @@ export const Shell = ({ appNeedsUpdate, children, userPeerId }: ShellProps) => {
   const [alertText, setAlertText] = useState('')
   const [roomId, setRoomId] = useState<string | undefined>(undefined)
   const [password, setPassword] = useState<string | undefined>(undefined)
-  const [isPeerListOpen, setIsPeerListOpen] = useState(false)
+  const [isPeerListOpen, setIsPeerListOpen] = useState(defaultSidebarsOpen)
   const [peerList, setPeerList] = useState<Peer[]>([]) // except self
   const [
     isServerConnectionFailureDialogOpen,
@@ -99,6 +108,36 @@ export const Shell = ({ appNeedsUpdate, children, userPeerId }: ShellProps) => {
     Record<string, AudioChannel>
   >({})
 
+  const [shellMessageLog, setShellMessageLog] = useState<ShellMessageLog>({
+    groupMessageLog: [],
+    directMessageLog: {},
+  })
+
+  const messageLog = shellMessageLog
+
+  const setMessageLog = useCallback(
+    (newMessageLog: MessageLog, targetPeerId: string | null) => {
+      setShellMessageLog(prev => {
+        const isDirectMessageLog = typeof targetPeerId === 'string'
+
+        const newShellMessageLog: ShellMessageLog = {
+          groupMessageLog: isDirectMessageLog
+            ? prev.groupMessageLog
+            : newMessageLog,
+          directMessageLog: {
+            ...prev.directMessageLog,
+            ...(isDirectMessageLog && {
+              [targetPeerId]: newMessageLog,
+            }),
+          },
+        }
+
+        return newShellMessageLog
+      })
+    },
+    []
+  )
+
   const showAlert = useCallback((message: string, options?: AlertOptions) => {
     setAlertText(message)
     setAlertSeverity(options?.severity ?? 'info')
@@ -109,14 +148,15 @@ export const Shell = ({ appNeedsUpdate, children, userPeerId }: ShellProps) => {
 
   const updatePeer = useCallback(
     (peerId: string, updatedProperties: Partial<Peer>) => {
-      setPeerList(peerList => {
-        const peerIndex = peerList.findIndex(peer => peer.peerId === peerId)
+      setPeerList(prev => {
+        const peerIndex = prev.findIndex(peer => peer.peerId === peerId)
         const doesPeerExist = peerIndex !== -1
 
-        if (!doesPeerExist) return peerList
+        if (!doesPeerExist) return prev
 
-        const peerListClone = [...peerList]
-        const peer = peerList[peerIndex]
+        const peerListClone = [...prev]
+        const peer = prev[peerIndex]
+
         peerListClone[peerIndex] = { ...peer, ...updatedProperties }
         return peerListClone
       })
@@ -157,6 +197,9 @@ export const Shell = ({ appNeedsUpdate, children, userPeerId }: ShellProps) => {
       setCustomUsername,
       connectionTestResults,
       updatePeer,
+      peerRoomRef,
+      messageLog,
+      setMessageLog,
     }),
     [
       isEmbedded,
@@ -187,6 +230,9 @@ export const Shell = ({ appNeedsUpdate, children, userPeerId }: ShellProps) => {
       setCustomUsername,
       connectionTestResults,
       updatePeer,
+      peerRoomRef,
+      messageLog,
+      setMessageLog,
     ]
   )
 
@@ -224,13 +270,14 @@ export const Shell = ({ appNeedsUpdate, children, userPeerId }: ShellProps) => {
       } else if (body.msRequestFullscreen) {
         await body.msRequestFullscreen()
       }
-    } catch (e) {
+    } catch (_e) {
       // Silence harmless errors
     }
   }
 
   const exitFullscreen = async () => {
     const document: any = window.document
+
     try {
       if (document.exitFullscreen) {
         await document.exitFullscreen()
@@ -241,7 +288,7 @@ export const Shell = ({ appNeedsUpdate, children, userPeerId }: ShellProps) => {
       } else if (document.msExitFullScreen) {
         await document.msExitFullScreen()
       }
-    } catch (e) {
+    } catch (_e) {
       // Silence harmless errors
     }
   }
@@ -275,6 +322,7 @@ export const Shell = ({ appNeedsUpdate, children, userPeerId }: ShellProps) => {
     const handleFullscreen = () => {
       setIsFullscreen(!!document.fullscreenElement)
     }
+
     window.addEventListener('focus', handleFocus)
     window.addEventListener('blur', handleBlur)
     document.addEventListener('fullscreenchange', handleFullscreen)
@@ -307,7 +355,11 @@ export const Shell = ({ appNeedsUpdate, children, userPeerId }: ShellProps) => {
   }
 
   const handleLinkButtonClick = async () => {
-    if (roomId !== undefined && password !== undefined) {
+    if (
+      roomId !== undefined &&
+      password !== undefined &&
+      allowAdvancedRoomLinkSharing
+    ) {
       setIsRoomShareDialogOpen(true)
     } else {
       copyToClipboard(window.location.href, 'Current URL copied to clipboard')
@@ -330,11 +382,11 @@ export const Shell = ({ appNeedsUpdate, children, userPeerId }: ShellProps) => {
           <>
             <UpgradeDialog appNeedsUpdate={appNeedsUpdate} />
             <Box
-              className="dt-chat-product"
-              data-digitable-color-mode={colorMode}
+              className="Chitchatter"
               sx={{
                 height: '100vh',
                 display: 'flex',
+                overflow: 'hidden',
               }}
             >
               <NotificationArea
@@ -362,7 +414,6 @@ export const Shell = ({ appNeedsUpdate, children, userPeerId }: ShellProps) => {
                 <Drawer
                   isDrawerOpen={isDrawerOpen}
                   onDrawerClose={handleDrawerClose}
-                  theme={theme}
                 />
               )}
               <RouteContent
@@ -374,7 +425,7 @@ export const Shell = ({ appNeedsUpdate, children, userPeerId }: ShellProps) => {
               </RouteContent>
               <MuiDrawer
                 sx={{
-                  flexShrink: 0,
+                  flexShrink: { xs: 1, sm: 0 },
                   pointerEvents: 'none',
                   width: peerListWidth,
                   '& .MuiDrawer-paper': {
@@ -409,10 +460,10 @@ export const Shell = ({ appNeedsUpdate, children, userPeerId }: ShellProps) => {
                   >
                     This conversation is powered by{' '}
                     <Link
-                      href="https://github.com/digitable-lol/chat"
+                      href="https://github.com/jeremyckahn/chitchatter"
                       target="_blank"
                     >
-                      Digitable Chat
+                      Chitchatter
                     </Link>
                   </Typography>
                 ) : null}

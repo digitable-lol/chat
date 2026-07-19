@@ -11,9 +11,11 @@ import macrosPlugin from 'vite-plugin-babel-macros'
 import { VitePWA } from 'vite-plugin-pwa'
 
 import { manifest } from './manifest'
+import { RouterType } from './src/models/router'
 
 const srcPaths = [
   'components',
+  'hooks',
   'config',
   'contexts',
   'lib',
@@ -33,6 +35,22 @@ const srcPathAliases = srcPaths.reduce((acc, dir) => {
 
 const config = () => {
   return defineConfig({
+    // NOTE: Uncomment this if you are hosting Chitchatter on GitHub Pages
+    // without a custom domain. If you renamed the repo to something other than
+    // "chitchatter", then use that instead of "chitchatter" here.
+    // base: '/chitchatter/',
+    server: {
+      proxy: {
+        '/api': {
+          target:
+            process.env.IS_E2E_TEST || process.env.VITE_IS_E2E_TEST
+              ? 'http://localhost:3003'
+              : 'http://localhost:3001',
+          changeOrigin: true,
+          secure: false,
+        },
+      },
+    },
     build: {
       // NOTE: This isn't really working. At the very least, it's still useful
       // for exposing source code to users.
@@ -61,6 +79,7 @@ const config = () => {
         injectRegister: 'auto',
         filename: 'service-worker.js',
         manifest,
+        selfDestroying: true,
       }),
     ],
     resolve: {
@@ -75,12 +94,17 @@ const config = () => {
       },
     },
     test: {
+      watch: false,
       globals: true,
       environment: 'jsdom',
       setupFiles: './src/setupTests.ts',
+      exclude: ['**/e2e/**', '**/node_modules/**'],
       coverage: {
         reporter: ['text', 'html'],
         exclude: ['node_modules/', 'src/setupTests.ts'],
+      },
+      env: {
+        VITE_ROUTER_TYPE: RouterType.BROWSER,
       },
     },
   })

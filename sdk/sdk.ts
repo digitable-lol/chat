@@ -8,7 +8,8 @@ import { QueryParamKeys } from '../src/models/shell'
 import { isColorMode, UserSettings } from '../src/models/settings'
 import { iframeFeatureAllowList } from '../src/config/iframeFeatureAllowList'
 
-export const defaultRoot = 'https://chat.digitable.life/'
+export const defaultRoot =
+  process.env.VITE_HOMEPAGE ?? 'https://chitchatter.im/'
 
 // NOTE: This is a subset of standard iframe attributes:
 // https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#attributes
@@ -103,9 +104,7 @@ class ChatEmbed extends HTMLElement {
     window.addEventListener('message', this.handleConfigRequestedMessage)
 
     this.configRequestExpirationTimout = setTimeout(() => {
-      console.error(
-        `[digitable-chat-sdk] configuration was not sent successfully`
-      )
+      console.error(`[chitchatter-sdk] configuration was not sent successfully`)
       this.stopListeningForConfigRequest()
     }, configRequestTimeout)
   }

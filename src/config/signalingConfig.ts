@@ -1,10 +1,17 @@
-import { RelayConfig } from 'trystero'
+import { RelayConfig } from '@trystero-p2p/mqtt'
 
 const parseUrls = (value?: string) =>
   value
     ?.split(',')
     .map(url => url.trim())
-    .filter(Boolean) ?? []
+    .filter(Boolean)
+    .filter(url => {
+      try {
+        return !new URL(url).hostname.endsWith('.example.com')
+      } catch {
+        return false
+      }
+    }) ?? []
 
 const relayUrls = [
   ...parseUrls(import.meta.env.VITE_SIGNALING_RELAY_URLS),
@@ -16,13 +23,13 @@ const requestedRedundancy = Number(
 )
 
 export const signalingConfig: RelayConfig = {
-  relayRedundancy:
+  redundancy:
     Number.isFinite(requestedRedundancy) && requestedRedundancy > 0
       ? Math.floor(requestedRedundancy)
       : 3,
   ...(relayUrls.length
     ? {
-        relayUrls: Array.from(new Set(relayUrls)),
+        urls: Array.from(new Set(relayUrls)),
       }
     : {}),
 }

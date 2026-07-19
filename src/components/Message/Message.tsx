@@ -5,21 +5,9 @@ import Box from '@mui/material/Box'
 import Tooltip from '@mui/material/Tooltip'
 import Typography, { TypographyProps } from '@mui/material/Typography'
 import Link, { LinkProps } from '@mui/material/Link'
-import { alpha } from '@mui/material/styles'
+import styled from '@mui/material/styles/styled'
 import { materialDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
-
-// These imports need to be ts-ignored to prevent spurious errors that look
-// like this:
-//
-//   Module 'react-markdown' cannot be imported using this construct. The
-//   specifier only resolves to an ES module, which cannot be imported
-//   synchronously. Use dynamic import instead. (tsserver 1471)
-//
-// @ts-ignore
-import Markdown from 'react-markdown'
-// @ts-ignore
-import { CodeProps } from 'react-markdown/lib/ast-to-react'
-// @ts-ignore
+import Markdown, { ExtraProps } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
 import {
@@ -33,7 +21,7 @@ import { CopyableBlock } from 'components/CopyableBlock/CopyableBlock'
 
 import { InlineMedia } from './InlineMedia'
 
-import './Message.sass'
+const StyledMarkdown = styled(Markdown)({})
 
 export interface MessageProps {
   message: IMessage | I_InlineMedia
@@ -62,13 +50,21 @@ const componentMap = {
   a: linkFactory({
     variant: 'body1',
     underline: 'always',
-    color: 'inherit',
+    color: 'primary.contrastText',
+    target: '_blank',
+    rel: 'noopener noreferrer',
   }),
   // https://github.com/remarkjs/react-markdown#use-custom-components-syntax-highlight
-  code({ node, inline, className, children, style, ...props }: CodeProps) {
+  code({
+    node,
+    className,
+    children,
+    style,
+    ...props
+  }: HTMLAttributes<HTMLElement> & ExtraProps) {
     const match = /language-(\w+)/.exec(className || '')
 
-    return !inline && match ? (
+    return match ? (
       <CopyableBlock>
         <SyntaxHighlighter
           children={String(children).replace(/\n$/, '')}
@@ -103,7 +99,15 @@ const isYouTubeLink = (message: IMessage) => {
 }
 
 export const Message = ({ message, showAuthor, userId }: MessageProps) => {
-  const isOwnMessage = message.authorId === userId
+  let backgroundColor: string
+
+  if (message.authorId === userId) {
+    backgroundColor = isMessageReceived(message)
+      ? 'primary.main'
+      : 'primary.light'
+  } else {
+    backgroundColor = 'secondary.main'
+  }
 
   return (
     <Box className="Message">
@@ -130,27 +134,19 @@ export const Message = ({ message, showAuthor, userId }: MessageProps) => {
         )}
       >
         <Box
-          sx={theme => ({
-            color: isOwnMessage
-              ? theme.palette.primary.contrastText
-              : theme.palette.text.primary,
-            backgroundColor: isOwnMessage
-              ? isMessageReceived(message)
-                ? theme.palette.primary.main
-                : alpha(theme.palette.primary.main, 0.72)
-              : alpha(theme.palette.background.paper, 0.96),
-            border: `1px solid ${
-              isOwnMessage
-                ? alpha(theme.palette.primary.dark, 0.5)
-                : theme.palette.divider
-            }`,
+          sx={{
+            color:
+              message.authorId === userId
+                ? 'primary.contrastText'
+                : 'secondary.contrastText',
+            backgroundColor,
             margin: 0.5,
-            padding: '0.65em 0.85em',
-            borderRadius: isOwnMessage ? '14px 4px 14px 14px' : '4px 14px 14px',
-            float: isOwnMessage ? 'right' : 'left',
-            transition: 'background-color 180ms ease',
+            padding: '0.5em 0.75em',
+            borderRadius: 6,
+            float: message.authorId === userId ? 'right' : 'left',
+            transition: 'background-color 1s',
             wordBreak: 'break-word',
-          })}
+          }}
           maxWidth="85%"
         >
           {isInlineMedia(message) ? (
@@ -158,13 +154,25 @@ export const Message = ({ message, showAuthor, userId }: MessageProps) => {
           ) : isYouTubeLink(message) ? (
             <YouTube videoId={getYouTubeVideoId(message.text)} />
           ) : (
-            <Markdown
+            <StyledMarkdown
               components={componentMap}
               remarkPlugins={[remarkGfm]}
-              linkTarget="_blank"
+              sx={{
+                '& pre': {
+                  overflow: 'auto',
+                },
+                '& ol': {
+                  pl: 2,
+                  listStyleType: 'decimal',
+                },
+                '& ul': {
+                  pl: 2,
+                  listStyleType: 'disc',
+                },
+              }}
             >
               {message.text}
-            </Markdown>
+            </StyledMarkdown>
           )}
         </Box>
       </Tooltip>

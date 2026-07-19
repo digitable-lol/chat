@@ -1,20 +1,34 @@
-import { createContext, Dispatch, SetStateAction } from 'react'
-
-import { AlertOptions } from 'models/shell'
 import {
+  createContext,
+  Dispatch,
+  MutableRefObject,
+  SetStateAction,
+} from 'react'
+
+import { ConnectionTestResults } from 'components/Shell/useConnectionTest'
+import { TrackerConnection } from 'lib/ConnectionTest'
+import { PeerConnectionType, PeerRoom } from 'lib/PeerRoom'
+import {
+  AudioChannel,
+  AudioChannelName,
   AudioState,
+  InlineMedia,
+  Message,
+  Peer,
+  PeerAudioChannelState,
   ScreenShareState,
   VideoState,
-  Peer,
-  AudioChannel,
-  PeerAudioChannelState,
-  AudioChannelName,
 } from 'models/chat'
-import { PeerConnectionType } from 'lib/PeerRoom'
-import { ConnectionTestResults } from 'components/Shell/useConnectionTest'
-import { SignalingConnection } from 'lib/ConnectionTest'
+import { AlertOptions } from 'models/shell'
 
-interface ShellContextProps {
+export type MessageLog = (Message | InlineMedia)[]
+
+export interface ShellMessageLog {
+  groupMessageLog: MessageLog
+  directMessageLog: Record<string, MessageLog>
+}
+
+export interface ShellContextProps {
   isEmbedded: boolean
   tabHasFocus: boolean
   showRoomControls: boolean
@@ -47,6 +61,9 @@ interface ShellContextProps {
   setCustomUsername: Dispatch<SetStateAction<string>>
   connectionTestResults: ConnectionTestResults
   updatePeer: (peerId: string, updatedProperties: Partial<Peer>) => void
+  peerRoomRef: MutableRefObject<PeerRoom | null>
+  messageLog: ShellMessageLog
+  setMessageLog: (messageLog: MessageLog, targetPeerId: string | null) => void
 }
 
 export const ShellContext = createContext<ShellContextProps>({
@@ -83,8 +100,11 @@ export const ShellContext = createContext<ShellContextProps>({
   setCustomUsername: () => {},
   connectionTestResults: {
     hasHost: false,
-    hasRelay: false,
-    signalingConnection: SignalingConnection.SEARCHING,
+    hasTURNServer: false,
+    trackerConnection: TrackerConnection.SEARCHING,
   },
   updatePeer: () => {},
+  peerRoomRef: { current: null },
+  messageLog: { groupMessageLog: [], directMessageLog: {} },
+  setMessageLog: () => {},
 })

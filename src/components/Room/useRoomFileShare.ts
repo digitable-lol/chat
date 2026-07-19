@@ -3,10 +3,11 @@ import { useContext, useEffect, useState } from 'react'
 import { sleep } from 'lib/sleep'
 import { RoomContext } from 'contexts/RoomContext'
 import { ShellContext } from 'contexts/ShellContext'
-import { PeerActions } from 'models/network'
+import { PeerAction } from 'models/network'
 import { FileOfferMetadata, Peer } from 'models/chat'
-import { PeerRoom, PeerHookType } from 'lib/PeerRoom'
-import { fileTransfer } from 'lib/FileTransfer'
+import { PeerRoom, PeerHookType, ActionNamespace } from 'lib/PeerRoom'
+import { usePeerAction } from 'hooks/usePeerAction'
+import { MessageContext } from 'trystero'
 
 interface UseRoomFileShareConfig {
   onInlineMediaUpload: (files: File[]) => void
@@ -29,44 +30,53 @@ export function useRoomFileShare({
   >(null)
   const [isFileSharingEnabled, setIsFileSharingEnabled] = useState(true)
 
-  const { peerList, setPeerList, showAlert } = shellContext
-  const { peerOfferedFileMetadata, setPeerOfferedFileMetadata } = roomContext
+  const { setPeerList, showAlert } = shellContext
+  const {
+    peerOfferedFileMetadata,
+    setPeerOfferedFileMetadata,
+    fileTransferService: { fileTransfer },
+  } = roomContext
 
-  const [sendFileOfferMetadata, receiveFileOfferMetadata] =
-    peerRoom.makeAction<FileOfferMetadata | null>(PeerActions.FILE_OFFER)
+  const [sendFileOfferMetadata] = usePeerAction<FileOfferMetadata | null>({
+    namespace: ActionNamespace.GROUP,
+    peerAction: PeerAction.FILE_OFFER,
+    peerRoom,
+    onReceive: (fileOfferMetadata, { peerId }: MessageContext) => {
+      if (fileOfferMetadata) {
+        setPeerOfferedFileMetadata({ [peerId]: fileOfferMetadata })
+      } else {
+        fileOfferMetadata = peerOfferedFileMetadata[peerId]
+        const { magnetURI, isAllInlineMedia } = fileOfferMetadata
 
-  receiveFileOfferMetadata((fileOfferMetadata, peerId) => {
-    if (fileOfferMetadata) {
-      setPeerOfferedFileMetadata({ [peerId]: fileOfferMetadata })
-    } else {
-      const fileOfferMetadata = peerOfferedFileMetadata[peerId]
-      const { magnetURI, isAllInlineMedia } = fileOfferMetadata
+        if (
+          fileOfferMetadata &&
+          fileTransfer.isOffering(magnetURI) &&
+          !isAllInlineMedia
+        ) {
+          fileTransfer.rescind(magnetURI)
+        }
 
-      if (
-        fileOfferMetadata &&
-        fileTransfer.isOffering(magnetURI) &&
-        !isAllInlineMedia
-      ) {
-        fileTransfer.rescind(magnetURI)
+        const newFileOfferMetadata = { ...peerOfferedFileMetadata }
+
+        delete newFileOfferMetadata[peerId]
+
+        setPeerOfferedFileMetadata(newFileOfferMetadata)
       }
 
-      const newFileOfferMetadata = { ...peerOfferedFileMetadata }
-      delete newFileOfferMetadata[peerId]
+      setPeerList(prev => {
+        const newPeerList = prev.map(peer => {
+          const newPeer: Peer = { ...peer }
 
-      setPeerOfferedFileMetadata(newFileOfferMetadata)
-    }
+          if (peer.peerId === peerId) {
+            newPeer.offeredFileId = fileOfferMetadata?.magnetURI ?? null
+          }
 
-    const newPeerList = peerList.map(peer => {
-      const newPeer: Peer = { ...peer }
+          return newPeer
+        })
 
-      if (peer.peerId === peerId) {
-        newPeer.offeredFileId = fileOfferMetadata?.magnetURI ?? null
-      }
-
-      return newPeer
-    })
-
-    setPeerList(newPeerList)
+        return newPeerList
+      })
+    },
   })
 
   const isEveryFileInlineMedia = (files: FileList | null) =>
@@ -89,7 +99,7 @@ export function useRoomFileShare({
         magnetURI: selfFileOfferMagnetUri,
         isAllInlineMedia: isEveryFileInlineMedia(sharedFiles),
       },
-      peerId
+      { target: peerId }
     )
   })
 
@@ -105,6 +115,7 @@ export function useRoomFileShare({
     }
 
     const newPeerFileOfferMetadata = { ...peerOfferedFileMetadata }
+
     delete newPeerFileOfferMetadata[peerId]
     setPeerOfferedFileMetadata(newPeerFileOfferMetadata)
   })
@@ -115,14 +126,15 @@ export function useRoomFileShare({
     setSharedFiles(files)
     setIsFileSharingEnabled(false)
 
-    if (typeof shellContext.roomId !== 'string') {
-      throw new Error('shellContext.roomId is not a string')
+    if (!shellContext.roomId) {
+      throw new Error('shellContext.roomId is not a non-empty string')
     }
 
     const alertText =
       files.length > 1
         ? 'Encrypting a copy of the files...'
         : 'Encrypting a copy of the file...'
+
     showAlert(alertText, { severity: 'info' })
 
     const magnetURI = await fileTransfer.offer(files, shellContext.roomId)
@@ -158,9 +170,8 @@ export function useRoomFileShare({
   useEffect(() => {
     return () => {
       fileTransfer.rescindAll()
-      sendFileOfferMetadata(null)
     }
-  }, [sendFileOfferMetadata])
+  }, [fileTransfer])
 
   const isSharingFile = Boolean(selfFileOfferMagnetUri)
 

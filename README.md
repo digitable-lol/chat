@@ -36,6 +36,7 @@ npm run dev
 Checks:
 
 ```bash
+npm run check:types
 npm test -- --run
 npm run build
 npm run lint
@@ -47,33 +48,15 @@ Copy `.env.example` to `.env.local` for local overrides.
 
 | Variable                                      | Purpose                                                                    |
 | --------------------------------------------- | -------------------------------------------------------------------------- |
-| `VITE_ICE_SERVERS_URL`                        | HTTPS endpoint that returns short-lived `iceServers` credentials.          |
+| `VITE_RTC_CONFIG_ENDPOINT`                    | HTTPS endpoint that returns short-lived `iceServers` credentials.          |
 | `VITE_TURN_URLS`                              | Optional comma-separated static TURN URLs for controlled environments.     |
 | `VITE_TURN_USERNAME` / `VITE_TURN_CREDENTIAL` | Optional static TURN credentials; never commit real values.                |
 | `VITE_ICE_TRANSPORT_POLICY`                   | `all` by default; use `relay` only for diagnostics or policy requirements. |
 | `VITE_SIGNALING_RELAY_URLS`                   | Comma-separated MQTT-over-WebSocket relay URLs.                            |
 | `VITE_SIGNALING_RELAY_REDUNDANCY`             | Number of signaling relays to use concurrently; defaults to `3`.           |
-| `VITE_SIGNALING_APP_ID`                       | Namespace that isolates rooms from other Trystero applications.            |
 | `VITE_FILE_TRACKER_URLS`                      | Optional WebTorrent trackers used only for file transfer.                  |
 
-The ICE endpoint may return either shape:
-
-```json
-{
-  "iceServers": [
-    {
-      "urls": [
-        "turn:turn.example.com:3478?transport=udp",
-        "turns:turn.example.com:5349?transport=tcp"
-      ],
-      "username": "short-lived-user",
-      "credential": "short-lived-secret"
-    }
-  ]
-}
-```
-
-When the endpoint is unavailable, the client continues with its configured STUN and optional static TURN fallback.
+The ICE endpoint may return one `RTCIceServer`, an array, or an object with an `iceServers` array. When the endpoint is unavailable, the client continues with its configured STUN and optional static TURN fallback.
 
 ## SDK
 

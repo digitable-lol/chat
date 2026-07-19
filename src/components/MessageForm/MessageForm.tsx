@@ -14,7 +14,7 @@ import ArrowUpward from '@mui/icons-material/ArrowUpward'
 
 import { messageCharacterSizeLimit } from 'config/messaging'
 import { SettingsContext } from 'contexts/SettingsContext'
-import classNames from 'classnames'
+import { Form } from 'components/Elements'
 
 interface MessageFormProps {
   onMessageSubmit: (message: string) => void
@@ -34,6 +34,7 @@ export const MessageForm = ({
 
   useEffect(() => {
     const { current: textField } = textFieldRef
+
     if (!textField) return
 
     textField.focus()
@@ -49,6 +50,7 @@ export const MessageForm = ({
 
   const handleMessageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = event.target
+
     setTextMessage(value)
     onMessageChange(value)
   }
@@ -76,14 +78,19 @@ export const MessageForm = ({
   }
 
   return (
-    <form
+    <Form
       onSubmit={handleMessageSubmit}
-      className={classNames('dt-chat-message-form', {
-        'pt-4 px-4': showActiveTypingStatus,
-        'p-4': !showActiveTypingStatus,
-      })}
+      sx={{
+        ...(showActiveTypingStatus && {
+          pt: 2,
+          px: 2,
+        }),
+        ...(!showActiveTypingStatus && {
+          p: 2,
+        }),
+      }}
     >
-      <Stack direction="row" spacing={1}>
+      <Stack direction="row" spacing={2}>
         <FormControl fullWidth>
           <TextField
             variant="outlined"
@@ -106,11 +113,10 @@ export const MessageForm = ({
           type="submit"
           disabled={!canMessageBeSent()}
           color="primary"
-          size="medium"
         >
           <ArrowUpward />
         </Fab>
       </Stack>
-    </form>
+    </Form>
   )
 }

@@ -1,39 +1,49 @@
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 
-import { sleep } from 'lib/sleep'
+import { SettingsContext } from 'contexts/SettingsContext'
+import { useTurnConfig } from 'hooks/useTurnConfig'
 import {
   ConnectionTest,
   ConnectionTestEvent,
   ConnectionTestEvents,
-  SignalingConnection,
+  TrackerConnection,
 } from 'lib/ConnectionTest'
+import { sleep } from 'lib/sleep'
 
 export interface ConnectionTestResults {
   hasHost: boolean
-  hasRelay: boolean
-  signalingConnection: SignalingConnection
+  hasTURNServer: boolean
+  trackerConnection: TrackerConnection
 }
 
 const rtcPollInterval = 20 * 1000
-const signalingPollInterval = 5 * 1000
+const trackerPollInterval = 5 * 1000
 
 export const useConnectionTest = () => {
+  const settingsContext = useContext(SettingsContext)
+  const { isEnhancedConnectivityEnabled } = settingsContext.getUserSettings()
+
+  const { turnConfig, isLoading: isConfigLoading } = useTurnConfig(
+    isEnhancedConnectivityEnabled
+  )
+
   const [hasHost, setHasHost] = useState(false)
-  const [hasRelay, setHasRelay] = useState(false)
-  const [signalingConnection, setSignalingConnection] = useState(
-    SignalingConnection.SEARCHING
+  const [hasTURNServer, setHasTURNServer] = useState(false)
+  const [trackerConnection, setTrackerConnection] = useState(
+    TrackerConnection.SEARCHING
   )
 
   useEffect(() => {
-    let active = true
-    let currentRtcTest: ConnectionTest | undefined
+    // Don't start connection tests until rtcConfig is loaded
+    if (isConfigLoading) {
+      return
+    }
 
     const checkRtcConnection = async () => {
-      const connectionTest = new ConnectionTest()
-      currentRtcTest = connectionTest
+      const connectionTest = new ConnectionTest(turnConfig)
 
       const handleHasHostChanged = ((event: ConnectionTestEvent) => {
-        if (active) setHasHost(event.detail.hasHost)
+        setHasHost(event.detail.hasHost)
 
         connectionTest.removeEventListener(
           ConnectionTestEvents.HAS_HOST_CHANGED,
@@ -47,7 +57,7 @@ export const useConnectionTest = () => {
       )
 
       const handleHasRelayChanged = ((event: ConnectionTestEvent) => {
-        if (active) setHasRelay(event.detail.hasRelay)
+        setHasTURNServer(event.detail.hasTURNServer)
 
         connectionTest.removeEventListener(
           ConnectionTestEvents.HAS_RELAY_CHANGED,
@@ -60,7 +70,7 @@ export const useConnectionTest = () => {
         handleHasRelayChanged
       )
 
-      window.setTimeout(() => {
+      setTimeout(() => {
         connectionTest.removeEventListener(
           ConnectionTestEvents.HAS_HOST_CHANGED,
           handleHasHostChanged
@@ -73,48 +83,41 @@ export const useConnectionTest = () => {
 
       try {
         await connectionTest.initRtcPeerConnectionTest()
-      } catch (error) {
-        if (active) {
-          setHasHost(false)
-          setHasRelay(false)
-        }
-        console.error(error)
+      } catch (e) {
+        setHasHost(false)
+        setHasTURNServer(false)
+        console.error(e)
       }
 
       return connectionTest
     }
 
-    const pollRtc = async () => {
-      while (active) {
+    ;(async () => {
+      while (true) {
         const connectionTest = await checkRtcConnection()
+
         await sleep(rtcPollInterval)
         connectionTest.destroyRtcPeerConnectionTest()
       }
-    }
-
-    const pollSignaling = async () => {
-      while (active) {
+    })()
+    ;(async () => {
+      while (true) {
         try {
-          const result = new ConnectionTest().testSignalingConnection()
-          if (active) setSignalingConnection(result)
-        } catch (error) {
-          if (active) setSignalingConnection(SignalingConnection.FAILED)
+          const connectionTest = new ConnectionTest(turnConfig)
+          const trackerConnectionTestResult =
+            connectionTest.testTrackerConnection()
+
+          setTrackerConnection(trackerConnectionTestResult)
+        } catch (_e) {
+          setTrackerConnection(TrackerConnection.FAILED)
         }
 
-        await sleep(signalingPollInterval)
+        await sleep(trackerPollInterval)
       }
-    }
-
-    void pollRtc()
-    void pollSignaling()
-
-    return () => {
-      active = false
-      currentRtcTest?.destroyRtcPeerConnectionTest()
-    }
-  }, [])
+    })()
+  }, [turnConfig, isConfigLoading])
 
   return {
-    connectionTestResults: { hasHost, hasRelay, signalingConnection },
+    connectionTestResults: { hasHost, hasTURNServer, trackerConnection },
   }
 }

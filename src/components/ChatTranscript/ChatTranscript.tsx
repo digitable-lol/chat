@@ -1,21 +1,20 @@
-import { HTMLAttributes, useRef, useEffect, useState, useContext } from 'react'
-import cx from 'classnames'
-import Box from '@mui/material/Box'
+import { useRef, useEffect, useState, useContext } from 'react'
+import Box, { BoxProps } from '@mui/material/Box'
 import useTheme from '@mui/material/styles/useTheme'
 
 import { Message as IMessage, InlineMedia } from 'models/chat'
 import { Message } from 'components/Message'
 import { ShellContext } from 'contexts/ShellContext'
 
-export interface ChatTranscriptProps extends HTMLAttributes<HTMLDivElement> {
+export interface ChatTranscriptProps extends BoxProps {
   messageLog: Array<IMessage | InlineMedia>
   userId: string
 }
 
 export const ChatTranscript = ({
-  className,
   messageLog,
   userId,
+  sx,
 }: ChatTranscriptProps) => {
   const { showRoomControls } = useContext(ShellContext)
   const theme = useTheme()
@@ -24,6 +23,7 @@ export const ChatTranscript = ({
 
   useEffect(() => {
     const { current: boxEl } = boxRef
+
     if (!boxEl) return
 
     const { scrollHeight, clientHeight, scrollTop, children } = boxEl
@@ -66,26 +66,22 @@ export const ChatTranscript = ({
   return (
     <Box
       ref={boxRef}
-      className={cx('ChatTranscript', className)}
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        py: transcriptMinPadding,
-        pt: showRoomControls ? theme.spacing(10) : theme.spacing(2),
-        px: `max(${transcriptPaddingX}, ${transcriptMinPadding})`,
-        transition: `padding-top ${theme.transitions.duration.short}ms ${theme.transitions.easing.easeInOut}`,
-        width: '100%',
-        minHeight: '100%',
-        flexGrow: 1,
-      }}
+      className="ChatTranscript"
+      sx={[
+        {
+          display: 'flex',
+          flexDirection: 'column',
+          flexGrow: 1,
+          overflow: 'auto',
+          pb: transcriptMinPadding,
+          pt: showRoomControls ? theme.spacing(10) : theme.spacing(2),
+          px: `max(${transcriptPaddingX}, ${transcriptMinPadding})`,
+          transition: `padding-top ${theme.transitions.duration.short}ms ${theme.transitions.easing.easeInOut}`,
+          width: '100%',
+        },
+        ...(Array.isArray(sx) ? sx : [sx]),
+      ]}
     >
-      {messageLog.length === 0 ? (
-        <Box className="dt-chat-empty">
-          <strong>The room is ready.</strong>
-          Share the room link to invite someone. Messages will appear here once
-          a peer connects.
-        </Box>
-      ) : null}
       {messageLog.map((message, idx) => {
         const previousMessage = messageLog[idx - 1]
         const isFirstMessageInGroup =

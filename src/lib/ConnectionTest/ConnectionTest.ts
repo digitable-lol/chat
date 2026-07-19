@@ -1,13 +1,13 @@
-import { getRelaySockets } from 'trystero/mqtt'
-import { rtcConfig } from 'config/rtcConfig'
+import { getRelaySockets } from '@trystero-p2p/mqtt'
 import { parseCandidate } from 'sdp'
 
 export enum ConnectionTestEvents {
+  CONNECTION_TEST_RESULTS_UPDATED = 'CONNECTION_TEST_RESULTS_UPDATED',
   HAS_HOST_CHANGED = 'HAS_HOST_CHANGED',
   HAS_RELAY_CHANGED = 'HAS_RELAY_CHANGED',
 }
 
-export enum SignalingConnection {
+export enum TrackerConnection {
   SEARCHING = 'SEARCHING',
   CONNECTED = 'CONNECTED',
   FAILED = 'FAILED',
@@ -15,23 +15,33 @@ export enum SignalingConnection {
 
 export type ConnectionTestEvent = CustomEvent<ConnectionTest>
 
-const checkExpirationTime = 10 * 1000
+const checkExperationTime = 10 * 1000
 
 export class ConnectionTest extends EventTarget {
-  signalingConnection = SignalingConnection.SEARCHING
+  trackerConnection = TrackerConnection.SEARCHING
   hasHost = false
-  hasRelay = false
+  hasTURNServer = false
+  hasPeerReflexive = false
+  hasServerReflexive = false
 
   rtcPeerConnection?: RTCPeerConnection
+  rtcConfig: RTCConfiguration
 
-  private rtcCheckTimeouts: number[] = []
+  constructor(rtcConfig: RTCConfiguration) {
+    super()
+    this.rtcConfig = rtcConfig
+  }
 
   async initRtcPeerConnectionTest() {
     if (typeof RTCPeerConnection === 'undefined') return
 
-    this.rtcPeerConnection = new RTCPeerConnection(rtcConfig)
+    const { iceServers } = this.rtcConfig
 
-    const hasHostCheckTimeout = window.setTimeout(() => {
+    this.rtcPeerConnection = new RTCPeerConnection({
+      iceServers,
+    })
+
+    const hasHostCheckTimeout = setTimeout(() => {
       this.hasHost = false
 
       this.dispatchEvent(
@@ -39,19 +49,17 @@ export class ConnectionTest extends EventTarget {
           detail: this,
         })
       )
-    }, checkExpirationTime)
+    }, checkExperationTime)
 
-    const hasRelayCheckTimeout = window.setTimeout(() => {
-      this.hasRelay = false
+    const hasTURNServerCheckTimeout = setTimeout(() => {
+      this.hasTURNServer = false
 
       this.dispatchEvent(
         new CustomEvent(ConnectionTestEvents.HAS_RELAY_CHANGED, {
           detail: this,
         })
       )
-    }, checkExpirationTime)
-
-    this.rtcCheckTimeouts = [hasHostCheckTimeout, hasRelayCheckTimeout]
+    }, checkExperationTime)
 
     this.rtcPeerConnection.addEventListener('icecandidate', event => {
       if (event.candidate?.candidate.length) {
@@ -66,8 +74,8 @@ export class ConnectionTest extends EventTarget {
             break
 
           case 'relay':
-            clearTimeout(hasRelayCheckTimeout)
-            this.hasRelay = window.navigator.onLine
+            clearTimeout(hasTURNServerCheckTimeout)
+            this.hasTURNServer = window.navigator.onLine
             eventType = ConnectionTestEvents.HAS_RELAY_CHANGED
             break
         }
@@ -79,47 +87,57 @@ export class ConnectionTest extends EventTarget {
             })
           )
         }
+
+        this.dispatchEvent(
+          new Event(ConnectionTestEvents.CONNECTION_TEST_RESULTS_UPDATED)
+        )
       }
     })
 
+    // Kick off the connection test
     try {
       const rtcSessionDescription = await this.rtcPeerConnection.createOffer({
         offerToReceiveAudio: true,
       })
 
-      await this.rtcPeerConnection.setLocalDescription(rtcSessionDescription)
-    } catch (error) {
-      console.warn('WebRTC connectivity test could not create an offer.', error)
-    }
+      this.rtcPeerConnection.setLocalDescription(rtcSessionDescription)
+    } catch (_e) {}
   }
 
   destroyRtcPeerConnectionTest() {
-    this.rtcCheckTimeouts.forEach(timeout => window.clearTimeout(timeout))
-    this.rtcCheckTimeouts = []
     this.rtcPeerConnection?.close()
   }
 
-  testSignalingConnection() {
-    const relaySockets = Object.values(getRelaySockets()).filter(Boolean)
+  testTrackerConnection() {
+    const relaySockets = Object.values(getRelaySockets())
 
     if (relaySockets.length === 0) {
-      this.signalingConnection = SignalingConnection.SEARCHING
-      return this.signalingConnection
+      // Trystero has not yet initialized tracker sockets
+      this.trackerConnection = TrackerConnection.SEARCHING
+      return this.trackerConnection
     }
 
-    const readyStates = relaySockets.map(({ readyState }) => readyState)
+    const readyStates = (relaySockets as WebSocket[]).map(
+      socket => socket.readyState
+    )
 
-    if (readyStates.every(readyState => readyState === WebSocket.CLOSED)) {
-      this.signalingConnection = SignalingConnection.FAILED
+    const haveAllTrackerConnectionsFailed = readyStates.every(
+      readyState => readyState === WebSocket.CLOSED
+    )
+
+    if (haveAllTrackerConnectionsFailed) {
+      this.trackerConnection = TrackerConnection.FAILED
       throw new Error('Could not connect to an MQTT signaling relay')
     }
 
-    this.signalingConnection = readyStates.some(
+    const areAnyTrackersConnected = readyStates.some(
       readyState => readyState === WebSocket.OPEN
     )
-      ? SignalingConnection.CONNECTED
-      : SignalingConnection.SEARCHING
 
-    return this.signalingConnection
+    this.trackerConnection = areAnyTrackersConnected
+      ? TrackerConnection.CONNECTED
+      : TrackerConnection.SEARCHING
+
+    return this.trackerConnection
   }
 }

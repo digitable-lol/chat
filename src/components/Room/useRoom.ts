@@ -1,40 +1,49 @@
-import { useContext, useEffect, useMemo, useState } from 'react'
-import { BaseRoomConfig, RelayConfig } from 'trystero'
-import { v4 as uuid } from 'uuid'
 import { useDebounce } from '@react-hook/debounce'
+import { useContext, useEffect, useMemo, useState } from 'react'
+import { v4 as uuid } from 'uuid'
 
-import { ShellContext } from 'contexts/ShellContext'
+import { getPeerName, usePeerNameDisplay } from 'components/PeerNameDisplay'
+import { RoomContextProps } from 'contexts/RoomContext'
 import { SettingsContext } from 'contexts/SettingsContext'
-import { PeerActions } from 'models/network'
+import { ShellContext } from 'contexts/ShellContext'
+import { usePeerAction } from 'hooks/usePeerAction'
+import { MessageContext } from 'trystero'
+import { Audio } from 'lib/Audio'
 import {
+  ActionNamespace,
+  PeerHookType,
+  PeerRoom,
+  RoomConfig,
+} from 'lib/PeerRoom'
+import { time } from 'lib/Time'
+import {
+  AudioChannelName,
   AudioState,
-  Message,
-  ReceivedMessage,
-  UnsentMessage,
-  InlineMedia,
-  ReceivedInlineMedia,
-  UnsentInlineMedia,
-  VideoState,
-  ScreenShareState,
-  isMessageReceived,
-  isInlineMedia,
   FileOfferMetadata,
-  TypingStatus,
+  InlineMedia,
+  isInlineMedia,
+  isMessageReceived,
+  Message,
   Peer,
   PeerVerificationState,
-  AudioChannelName,
+  ReceivedInlineMedia,
+  ReceivedMessage,
+  ScreenShareState,
+  TypingStatus,
+  UnsentInlineMedia,
+  UnsentMessage,
+  VideoState,
 } from 'models/chat'
-import { getPeerName, usePeerNameDisplay } from 'components/PeerNameDisplay'
-import { Audio } from 'lib/Audio'
-import { time } from 'lib/Time'
-import { PeerRoom, PeerHookType } from 'lib/PeerRoom'
+import { PeerAction } from 'models/network'
+import {
+  AllowedKeyType,
+  encryption,
+  EncryptionService,
+} from 'services/Encryption'
+import { FileTransferService } from 'services/FileTransfer'
 import { notification } from 'services/Notification'
-import { fileTransfer } from 'lib/FileTransfer'
-import { AllowedKeyType, encryption } from 'services/Encryption'
 
 import { messageTranscriptSizeLimit } from 'config/messaging'
-
-import { usePeerVerification } from './usePeerVerification'
 
 interface UseRoomConfig {
   roomId: string
@@ -43,20 +52,28 @@ interface UseRoomConfig {
   getUuid?: typeof uuid
   encryptionService?: typeof encryption
   timeService?: typeof time
+  targetPeerId?: string | null
 }
 
 interface UserMetadata extends Record<string, any> {
   userId: string
   customUsername: string
   publicKeyString: string
+  identitySignatureBase64: string
 }
 
+const getIdentityVerificationMessage = (
+  roomId: string,
+  userId: string
+): string => `${roomId}_${userId}`
+
 export function useRoom(
-  { password, ...roomConfig }: BaseRoomConfig & RelayConfig,
+  { password, ...roomConfig }: RoomConfig,
   {
     roomId,
     userId,
     publicKey,
+    targetPeerId = null,
     getUuid = uuid,
     encryptionService = encryption,
     timeService = time,
@@ -64,9 +81,10 @@ export function useRoom(
 ) {
   const isPrivate = password !== undefined
 
-  const [peerRoom] = useState(
-    () => new PeerRoom({ password: password ?? roomId, ...roomConfig }, roomId)
-  )
+  const isDirectMessageRoom = typeof targetPeerId === 'string'
+  const namespace = isDirectMessageRoom
+    ? ActionNamespace.DIRECT_MESSAGE
+    : ActionNamespace.GROUP
 
   const {
     peerList,
@@ -78,17 +96,36 @@ export function useRoom(
     setPassword,
     customUsername,
     updatePeer,
+    peerRoomRef,
+    messageLog: shellMessageLog,
+    setMessageLog: shellSetMessageLog,
   } = useContext(ShellContext)
+
+  const messageLog = isDirectMessageRoom
+    ? (shellMessageLog.directMessageLog[targetPeerId] ?? [])
+    : shellMessageLog.groupMessageLog
+
+  const [peerRoom] = useState(
+    () =>
+      peerRoomRef.current ??
+      new PeerRoom({ password: password ?? roomId, ...roomConfig }, roomId)
+  )
+
+  peerRoomRef.current = peerRoom
 
   const settingsContext = useContext(SettingsContext)
   const { showActiveTypingStatus } = settingsContext.getUserSettings()
   const [isMessageSending, setIsMessageSending] = useState(false)
-  const [messageLog, _setMessageLog] = useState<Array<Message | InlineMedia>>(
-    []
-  )
-  const [newMessageAudio] = useState(() => new Audio('/sounds/new-message.aac'))
+
+  const { selectedSound } = settingsContext.getUserSettings()
+  const [newMessageAudio] = useState(() => new Audio(selectedSound))
 
   const { getDisplayUsername } = usePeerNameDisplay()
+
+  const fileTransferService = useMemo(
+    () => new FileTransferService(roomConfig.rtcConfig!),
+    [roomConfig.rtcConfig]
+  )
 
   const setMessageLog = (messages: Array<Message | InlineMedia>) => {
     if (messages.length > messageTranscriptSizeLimit) {
@@ -100,14 +137,17 @@ export function useRoom(
       for (const message of evictedMessages) {
         if (
           isInlineMedia(message) &&
-          fileTransfer.isOffering(message.magnetURI)
+          fileTransferService.fileTransfer.isOffering(message.magnetURI)
         ) {
-          fileTransfer.rescind(message.magnetURI)
+          fileTransferService.fileTransfer.rescind(message.magnetURI)
         }
       }
     }
 
-    _setMessageLog(messages.slice(-messageTranscriptSizeLimit))
+    shellSetMessageLog(
+      messages.slice(-messageTranscriptSizeLimit),
+      targetPeerId
+    )
   }
 
   const [isShowingMessages, setIsShowingMessages] = useState(true)
@@ -131,7 +171,7 @@ export function useRoom(
     Record<string, FileOfferMetadata>
   >({})
 
-  const roomContextValue = useMemo(
+  const roomContextValue: RoomContextProps = useMemo(
     () => ({
       isPrivate,
       isMessageSending,
@@ -148,6 +188,7 @@ export function useRoom(
       setPeerScreenStreams,
       peerOfferedFileMetadata,
       setPeerOfferedFileMetadata,
+      fileTransferService,
     }),
     [
       isPrivate,
@@ -165,11 +206,23 @@ export function useRoom(
       setPeerScreenStreams,
       peerOfferedFileMetadata,
       setPeerOfferedFileMetadata,
+      fileTransferService,
     ]
   )
 
-  const [sendTypingStatusChange, receiveTypingStatusChange] =
-    peerRoom.makeAction<TypingStatus>(PeerActions.TYPING_STATUS_CHANGE)
+  const [sendTypingStatusChange] = usePeerAction<TypingStatus>({
+    namespace,
+    peerAction: PeerAction.TYPING_STATUS_CHANGE,
+    peerRoom,
+    onReceive: (typingStatus, { peerId }: MessageContext) => {
+      const { isTyping } = typingStatus
+
+      updatePeer(peerId, {
+        isTypingGroupMessage: isTyping && !isDirectMessageRoom,
+        isTypingDirectMessage: isTyping && isDirectMessageRoom,
+      })
+    },
+  })
 
   const [isTyping, setIsTypingDebounced, setIsTyping] = useDebounce(
     false,
@@ -180,16 +233,40 @@ export function useRoom(
   useEffect(() => {
     if (!showActiveTypingStatus) return
 
-    sendTypingStatusChange({ isTyping })
-  }, [isTyping, sendTypingStatusChange, showActiveTypingStatus])
+    sendTypingStatusChange(
+      { isTyping },
+      targetPeerId ? { target: targetPeerId } : undefined
+    )
+  }, [
+    isDirectMessageRoom,
+    isTyping,
+    sendTypingStatusChange,
+    showActiveTypingStatus,
+    targetPeerId,
+  ])
 
   useEffect(() => {
     return () => {
-      sendTypingStatusChange({ isTyping: false })
+      if (isDirectMessageRoom) return
+
+      sendTypingStatusChange(
+        { isTyping: false },
+        targetPeerId ? { target: targetPeerId } : undefined
+      )
       peerRoom.leaveRoom()
+      peerRoomRef.current = null
       setPeerList([])
+      shellSetMessageLog([], targetPeerId)
     }
-  }, [peerRoom, setPeerList, sendTypingStatusChange])
+  }, [
+    peerRoom,
+    setPeerList,
+    sendTypingStatusChange,
+    peerRoomRef,
+    isDirectMessageRoom,
+    shellSetMessageLog,
+    targetPeerId,
+  ])
 
   useEffect(() => {
     setPassword(password)
@@ -200,37 +277,182 @@ export function useRoom(
   }, [password, setPassword])
 
   useEffect(() => {
+    if (isDirectMessageRoom) {
+      return
+    }
+
     setRoomId(roomId)
 
     return () => {
       setRoomId(undefined)
     }
-  }, [roomId, setRoomId])
+  }, [roomId, setRoomId, isDirectMessageRoom])
 
   useEffect(() => {
     if (isShowingMessages) setUnreadMessages(0)
   }, [isShowingMessages, setUnreadMessages])
 
-  const [sendPeerMetadata, receivePeerMetadata] =
-    peerRoom.makeAction<UserMetadata>(PeerActions.PEER_METADATA)
+  const [sendPeerMetadata] = usePeerAction<UserMetadata>({
+    namespace,
+    peerAction: PeerAction.PEER_METADATA,
+    peerRoom,
+    onReceive: async (
+      {
+        userId: peerUserId,
+        customUsername: peerCustomUsername,
+        publicKeyString,
+        identitySignatureBase64,
+      },
+      { peerId }: MessageContext
+    ) => {
+      const parsedPublicKey = await encryptionService.parseCryptoKeyString(
+        publicKeyString,
+        AllowedKeyType.PUBLIC
+      )
 
-  const [sendMessageTranscript, receiveMessageTranscript] = peerRoom.makeAction<
+      const identitySignature = EncryptionService.base64ToArrayBuffer(
+        identitySignatureBase64
+      )
+      const isVerified = await encryptionService.verifySignature(
+        parsedPublicKey,
+        identitySignature,
+        getIdentityVerificationMessage(roomId, peerUserId)
+      )
+
+      if (!isVerified) {
+        console.warn('Peer verification failed, marking peer as unverified')
+      }
+
+      const peerIndex = peerList.findIndex(peer => peer.peerId === peerId)
+
+      const verificationState = isVerified
+        ? PeerVerificationState.VERIFIED
+        : PeerVerificationState.UNVERIFIED
+
+      if (peerIndex === -1) {
+        const newPeer: Peer = {
+          peerId,
+          userId: peerUserId,
+          publicKey: parsedPublicKey,
+          customUsername: peerCustomUsername,
+          audioChannelState: {
+            [AudioChannelName.MICROPHONE]: AudioState.STOPPED,
+            [AudioChannelName.SCREEN_SHARE]: AudioState.STOPPED,
+          },
+          videoState: VideoState.STOPPED,
+          screenShareState: ScreenShareState.NOT_SHARING,
+          offeredFileId: null,
+          isTypingGroupMessage: false,
+          isTypingDirectMessage: false,
+          verificationToken: getUuid(),
+          encryptedVerificationToken: new ArrayBuffer(0),
+          verificationState: verificationState,
+          verificationTimer: null,
+        }
+
+        setPeerList(prev => [...prev, newPeer])
+        sendTypingStatusChange({ isTyping }, { target: peerId })
+      } else {
+        const oldUsername =
+          peerList[peerIndex].customUsername || getPeerName(peerUserId)
+        const newUsername = peerCustomUsername || getPeerName(peerUserId)
+
+        setPeerList(prev => {
+          const newPeerList = [...prev]
+          const newPeer = {
+            ...newPeerList[peerIndex],
+            userId: peerUserId,
+            customUsername: peerCustomUsername,
+            verificationState,
+          }
+
+          newPeerList[peerIndex] = newPeer
+
+          return newPeerList
+        })
+
+        if (oldUsername !== newUsername) {
+          showAlert(`${oldUsername} is now ${newUsername}`)
+        }
+      }
+    },
+  })
+
+  const [sendMessageTranscript] = usePeerAction<
     Array<ReceivedMessage | ReceivedInlineMedia>
-  >(PeerActions.MESSAGE_TRANSCRIPT)
+  >({
+    namespace,
+    peerAction: PeerAction.MESSAGE_TRANSCRIPT,
+    peerRoom,
+    onReceive: transcript => {
+      if (messageLog.length) return
 
-  const [sendPeerMessage, receivePeerMessage] =
-    peerRoom.makeAction<UnsentMessage>(PeerActions.MESSAGE)
+      setMessageLog(transcript)
+    },
+  })
 
-  const [sendPeerInlineMedia, receivePeerInlineMedia] =
-    peerRoom.makeAction<UnsentInlineMedia>(PeerActions.MEDIA_MESSAGE)
+  const [sendPeerMessage] = usePeerAction<UnsentMessage>({
+    namespace,
+    peerAction: PeerAction.MESSAGE,
+    peerRoom,
+    onReceive: (message, { peerId }: MessageContext) => {
+      if (isDirectMessageRoom && peerId !== targetPeerId) {
+        return
+      }
+
+      const userSettings = settingsContext.getUserSettings()
+
+      if (!isShowingMessages) {
+        setUnreadMessages(unreadMessages + 1)
+      }
+
+      if (!tabHasFocus || !isShowingMessages) {
+        if (userSettings.playSoundOnNewMessage) {
+          newMessageAudio.play()
+        }
+
+        if (userSettings.showNotificationOnNewMessage) {
+          const displayUsername = getDisplayUsername(message.authorId)
+
+          notification.showNotification(`${displayUsername}: ${message.text}`)
+        }
+      }
+
+      setMessageLog([
+        ...messageLog,
+        { ...message, timeReceived: timeService.now() },
+      ])
+      updatePeer(peerId, { isTypingGroupMessage: false })
+    },
+  })
+
+  const [sendPeerInlineMedia] = usePeerAction<UnsentInlineMedia>({
+    namespace,
+    peerAction: PeerAction.MEDIA_MESSAGE,
+    peerRoom,
+    onReceive: inlineMedia => {
+      const userSettings = settingsContext.getUserSettings()
+
+      if (!tabHasFocus) {
+        if (userSettings.playSoundOnNewMessage) {
+          newMessageAudio.play()
+        }
+
+        if (userSettings.showNotificationOnNewMessage) {
+          notification.showNotification(
+            `${getDisplayUsername(inlineMedia.authorId)} shared media`
+          )
+        }
+      }
+
+      setMessageLog([
+        ...messageLog,
+        { ...inlineMedia, timeReceived: timeService.now() },
+      ])
+    },
+  })
 
   const { privateKey } = settingsContext.getUserSettings()
-
-  const { verifyPeer } = usePeerVerification({
-    peerRoom,
-    privateKey,
-    encryptionService,
-  })
 
   const sendMessage = async (message: string) => {
     if (isMessageSending) return
@@ -245,7 +467,11 @@ export function useRoom(
     setIsTyping(false)
     setIsMessageSending(true)
     setMessageLog([...messageLog, unsentMessage])
-    await sendPeerMessage(unsentMessage)
+
+    await sendPeerMessage(
+      unsentMessage,
+      targetPeerId ? { target: targetPeerId } : undefined
+    )
 
     setMessageLog([
       ...messageLog,
@@ -254,135 +480,75 @@ export function useRoom(
     setIsMessageSending(false)
   }
 
-  receivePeerMetadata(
-    async ({ userId, customUsername, publicKeyString }, peerId: string) => {
-      const publicKey = await encryptionService.parseCryptoKeyString(
-        publicKeyString,
-        AllowedKeyType.PUBLIC
+  if (!isDirectMessageRoom) {
+    peerRoom.onPeerJoin(PeerHookType.NEW_PEER, (peerId: string) => {
+      showAlert(`Someone has joined the room`, {
+        severity: 'success',
+      })
+      ;(async () => {
+        try {
+          const publicKeyString =
+            await encryptionService.stringifyCryptoKey(publicKey)
+          const identitySignature = await encryptionService.signString(
+            privateKey,
+            getIdentityVerificationMessage(roomId, userId)
+          )
+          const identitySignatureBase64 =
+            EncryptionService.arrayBufferToBase64(identitySignature)
+
+          const promises: Promise<any>[] = [
+            sendPeerMetadata(
+              {
+                userId,
+                customUsername,
+                publicKeyString,
+                identitySignatureBase64,
+              },
+              { target: peerId }
+            ),
+          ]
+
+          if (!isPrivate) {
+            promises.push(
+              sendMessageTranscript(messageLog.filter(isMessageReceived), {
+                target: peerId,
+              })
+            )
+          }
+
+          await Promise.all(promises)
+        } catch (e) {
+          console.error(e)
+        }
+      })()
+    })
+
+    peerRoom.onPeerLeave(PeerHookType.NEW_PEER, (peerId: string) => {
+      const peerIndex = peerList.findIndex(peer => peer.peerId === peerId)
+      const doesPeerExist = peerIndex !== -1
+
+      showAlert(
+        `${
+          doesPeerExist
+            ? getDisplayUsername(peerList[peerIndex].userId)
+            : 'Someone'
+        } has left the room`,
+        {
+          severity: 'warning',
+        }
       )
 
-      const peerIndex = peerList.findIndex(peer => peer.peerId === peerId)
+      if (doesPeerExist) {
+        setPeerList(prev => {
+          const peerListClone = [...prev]
 
-      if (peerIndex === -1) {
-        const newPeer: Peer = {
-          peerId,
-          userId,
-          publicKey,
-          customUsername,
-          audioChannelState: {
-            [AudioChannelName.MICROPHONE]: AudioState.STOPPED,
-            [AudioChannelName.SCREEN_SHARE]: AudioState.STOPPED,
-          },
-          videoState: VideoState.STOPPED,
-          screenShareState: ScreenShareState.NOT_SHARING,
-          offeredFileId: null,
-          isTyping: false,
-          verificationToken: getUuid(),
-          encryptedVerificationToken: new ArrayBuffer(0),
-          verificationState: PeerVerificationState.VERIFYING,
-          verificationTimer: null,
-        }
+          peerListClone.splice(peerIndex, 1)
 
-        setPeerList([...peerList, newPeer])
-        sendTypingStatusChange({ isTyping }, peerId)
-        verifyPeer(newPeer)
-      } else {
-        const oldUsername =
-          peerList[peerIndex].customUsername || getPeerName(userId)
-        const newUsername = customUsername || getPeerName(userId)
-
-        const newPeerList = [...peerList]
-        const newPeer = { ...newPeerList[peerIndex], userId, customUsername }
-        newPeerList[peerIndex] = newPeer
-        setPeerList(newPeerList)
-
-        if (oldUsername !== newUsername) {
-          showAlert(`${oldUsername} is now ${newUsername}`)
-        }
+          return peerListClone
+        })
       }
-    }
-  )
-
-  receiveMessageTranscript(transcript => {
-    if (messageLog.length) return
-
-    setMessageLog(transcript)
-  })
-
-  receivePeerMessage((message, peerId) => {
-    const userSettings = settingsContext.getUserSettings()
-
-    if (!isShowingMessages) {
-      setUnreadMessages(unreadMessages + 1)
-    }
-
-    if (!tabHasFocus || !isShowingMessages) {
-      if (userSettings.playSoundOnNewMessage) {
-        newMessageAudio.play()
-      }
-
-      if (userSettings.showNotificationOnNewMessage) {
-        const displayUsername = getDisplayUsername(message.authorId)
-
-        notification.showNotification(`${displayUsername}: ${message.text}`)
-      }
-    }
-
-    setMessageLog([
-      ...messageLog,
-      { ...message, timeReceived: timeService.now() },
-    ])
-    updatePeer(peerId, { isTyping: false })
-  })
-
-  peerRoom.onPeerJoin(PeerHookType.NEW_PEER, (peerId: string) => {
-    showAlert(`Someone has joined the room`, {
-      severity: 'success',
     })
-    ;(async () => {
-      try {
-        const publicKeyString = await encryptionService.stringifyCryptoKey(
-          publicKey
-        )
-
-        const promises: Promise<any>[] = [
-          sendPeerMetadata({ userId, customUsername, publicKeyString }, peerId),
-        ]
-
-        if (!isPrivate) {
-          promises.push(
-            sendMessageTranscript(messageLog.filter(isMessageReceived), peerId)
-          )
-        }
-
-        await Promise.all(promises)
-      } catch (e) {
-        console.error(e)
-      }
-    })()
-  })
-
-  peerRoom.onPeerLeave(PeerHookType.NEW_PEER, (peerId: string) => {
-    const peerIndex = peerList.findIndex(peer => peer.peerId === peerId)
-    const doesPeerExist = peerIndex !== -1
-
-    showAlert(
-      `${
-        doesPeerExist
-          ? getDisplayUsername(peerList[peerIndex].userId)
-          : 'Someone'
-      } has left the room`,
-      {
-        severity: 'warning',
-      }
-    )
-
-    if (doesPeerExist) {
-      const peerListClone = [...peerList]
-      peerListClone.splice(peerIndex, 1)
-      setPeerList(peerListClone)
-    }
-  })
+  }
 
   const showVideoDisplay = Boolean(
     selfVideoStream ||
@@ -393,7 +559,10 @@ export function useRoom(
   if (!showVideoDisplay && !isShowingMessages) setIsShowingMessages(true)
 
   const handleInlineMediaUpload = async (files: File[]) => {
-    const fileOfferId = await fileTransfer.offer(files, roomId)
+    const fileOfferId = await fileTransferService.fileTransfer.offer(
+      files,
+      roomId
+    )
 
     const unsentInlineMedia: UnsentInlineMedia = {
       authorId: userId,
@@ -426,45 +595,36 @@ export function useRoom(
     setIsTypingDebounced(false)
   }
 
-  receivePeerInlineMedia(inlineMedia => {
-    const userSettings = settingsContext.getUserSettings()
-
-    if (!tabHasFocus) {
-      if (userSettings.playSoundOnNewMessage) {
-        newMessageAudio.play()
-      }
-
-      if (userSettings.showNotificationOnNewMessage) {
-        notification.showNotification(
-          `${getDisplayUsername(inlineMedia.authorId)} shared media`
-        )
-      }
-    }
-
-    setMessageLog([
-      ...messageLog,
-      { ...inlineMedia, timeReceived: timeService.now() },
-    ])
-  })
-
-  receiveTypingStatusChange((typingStatus, peerId) => {
-    const { isTyping } = typingStatus
-    updatePeer(peerId, { isTyping })
-  })
-
   useEffect(() => {
     ;(async () => {
-      const publicKeyString = await encryptionService.stringifyCryptoKey(
-        publicKey
+      if (isDirectMessageRoom) return
+
+      const publicKeyString =
+        await encryptionService.stringifyCryptoKey(publicKey)
+      const identitySignature = await encryptionService.signString(
+        privateKey,
+        getIdentityVerificationMessage(roomId, userId)
       )
+      const identitySignatureBase64 =
+        EncryptionService.arrayBufferToBase64(identitySignature)
 
       sendPeerMetadata({
         customUsername,
         userId,
         publicKeyString,
+        identitySignatureBase64,
       })
     })()
-  }, [customUsername, userId, sendPeerMetadata, publicKey, encryptionService])
+  }, [
+    customUsername,
+    userId,
+    sendPeerMetadata,
+    publicKey,
+    privateKey,
+    roomId,
+    encryptionService,
+    isDirectMessageRoom,
+  ])
 
   useEffect(() => {
     ;(async () => {
@@ -473,6 +633,7 @@ export function useRoom(
   }, [peerList, peerRoom, setPeerConnectionTypes])
 
   return {
+    isDirectMessageRoom,
     isPrivate,
     handleInlineMediaUpload,
     handleMessageChange,

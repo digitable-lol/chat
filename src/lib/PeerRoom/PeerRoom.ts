@@ -1,8 +1,14 @@
-import { Room, BaseRoomConfig, DataPayload, RelayConfig } from 'trystero'
-import { joinRoom } from 'trystero/mqtt'
+import {
+  Room,
+  DataPayload,
+  ActionProgressHandler,
+  MessageContext,
+  MessageAction,
+} from '@trystero-p2p/core'
+import { joinRoom, MqttRoomConfig } from '@trystero-p2p/mqtt'
 
 import { sleep } from 'lib/sleep'
-import { StreamType } from 'models/chat'
+import { PeerAction } from 'models/network'
 
 export enum PeerHookType {
   NEW_PEER = 'NEW_PEER',
@@ -23,26 +29,48 @@ export enum PeerConnectionType {
   RELAY = 'RELAY',
 }
 
+export enum ActionNamespace {
+  GROUP = 'g',
+  DIRECT_MESSAGE = 'dm',
+}
+
 const streamQueueAddDelay = 1000
+
+export type ActionSender<T extends DataPayload> = MessageAction<T>['send']
+
+export type ActionReceiver<T extends DataPayload> = (
+  callback: NonNullable<MessageAction<T>['onMessage']>
+) => void
+
+export type ActionProgress = (fn: ActionProgressHandler) => void
+
+export type PeerRoomAction<T extends DataPayload> = [
+  ActionSender<T>,
+  ActionReceiver<T>,
+  ActionProgress,
+  () => void,
+]
+
+export type RoomConfig = MqttRoomConfig
 
 export class PeerRoom {
   private room: Room
 
-  private roomConfig: RelayConfig & BaseRoomConfig
+  private roomConfig: RoomConfig
 
   private peerJoinHandlers: Map<
     PeerHookType,
-    Parameters<Room['onPeerJoin']>[0]
+    Exclude<Room['onPeerJoin'], null>
   > = new Map()
 
   private peerLeaveHandlers: Map<
     PeerHookType,
-    Parameters<Room['onPeerLeave']>[0]
+    Exclude<Room['onPeerLeave'], null>
   > = new Map()
 
   private peerStreamHandlers: Map<
     PeerStreamType,
-    Parameters<Room['onPeerStream']>[0]
+    Exclude<Room['onPeerStream'], null>
   > = new Map()
 
   private streamQueue: (() => Promise<any>)[] = []
@@ -61,27 +89,29 @@ export class PeerRoom {
     this.isProcessingPendingStreams = false
   }
 
-  constructor(config: RelayConfig & BaseRoomConfig, roomId: string) {
+  private actions: Partial<Record<string, PeerRoomAction<any>>> = {}
+
+  constructor(config: RoomConfig, roomId: string) {
     this.roomConfig = config
     this.room = joinRoom(this.roomConfig, roomId)
 
-    this.room.onPeerJoin((...args) => {
+    this.room.onPeerJoin = (...args) => {
       for (const [, peerJoinHandler] of this.peerJoinHandlers) {
         peerJoinHandler(...args)
       }
-    })
+    }
 
-    this.room.onPeerLeave((...args) => {
+    this.room.onPeerLeave = (...args) => {
       for (const [, peerLeaveHandler] of this.peerLeaveHandlers) {
         peerLeaveHandler(...args)
       }
-    })
+    }
 
-    this.room.onPeerStream((...args) => {
+    this.room.onPeerStream = (...args) => {
       for (const [, peerStreamHandler] of this.peerStreamHandlers) {
         peerStreamHandler(...args)
       }
-    })
+    }
   }
 
   flush = () => {
@@ -97,7 +127,7 @@ export class PeerRoom {
 
   onPeerJoin = (
     peerHookType: PeerHookType,
-    fn: Parameters<Room['onPeerJoin']>[0]
+    fn: Exclude<Room['onPeerJoin'], null>
   ) => {
     this.peerJoinHandlers.set(peerHookType, fn)
   }
@@ -108,7 +138,7 @@ export class PeerRoom {
 
   onPeerLeave = (
     peerHookType: PeerHookType,
-    fn: Parameters<Room['onPeerLeave']>[0]
+    fn: Exclude<Room['onPeerLeave'], null>
   ) => {
     this.peerLeaveHandlers.set(peerHookType, fn)
   }
@@ -119,7 +149,7 @@ export class PeerRoom {
 
   onPeerStream = (
     peerStreamType: PeerStreamType,
-    fn: Parameters<Room['onPeerStream']>[0]
+    fn: Exclude<Room['onPeerStream'], null>
   ) => {
     this.peerStreamHandlers.set(peerStreamType, fn)
   }
@@ -168,27 +198,87 @@ export class PeerRoom {
     return peerConnections
   }
 
-  makeAction = <T extends DataPayload>(namespace: string) => {
-    return this.room.makeAction<T>(namespace)
+  makeAction = <T extends DataPayload>(
+    peerAction: PeerAction,
+    namespace: string
+  ): PeerRoomAction<T> => {
+    const actionName = `${namespace}.${peerAction}`
+
+    if (actionName in this.actions) {
+      return this.actions[actionName] as PeerRoomAction<T>
+    }
+
+    const actionObj = this.room.makeAction<T>(actionName)
+
+    const sender: ActionSender<T> = (data, options) => {
+      return actionObj.send(data, options)
+    }
+
+    const progress: ActionProgress = fn => {
+      actionObj.onReceiveProgress = fn
+    }
+
+    const eventName = `peerRoomAction.${namespace}.${peerAction}`
+    const eventTarget = new EventTarget()
+
+    type ActionParameters = [T, MessageContext]
+    let handler: ((event: CustomEventInit<ActionParameters>) => void) | null =
+      null
+
+    const connectReceiver: ActionReceiver<T> = callback => {
+      handler = (event: CustomEventInit<ActionParameters>) => {
+        const { detail: receiverArguments } = event
+
+        if (typeof receiverArguments === 'undefined') {
+          throw new TypeError('Invalid receiver arguments')
+        }
+
+        callback(...receiverArguments)
+      }
+
+      eventTarget.addEventListener(eventName, handler)
+    }
+
+    actionObj.onMessage = (data, context) => {
+      const customEvent = new CustomEvent(eventName, {
+        detail: [data, context],
+      })
+
+      eventTarget.dispatchEvent(customEvent)
+    }
+
+    const detatchDispatchReceiver = () => {
+      eventTarget.removeEventListener(eventName, handler)
+    }
+
+    const action: PeerRoomAction<T> = [
+      sender,
+      connectReceiver,
+      progress,
+      detatchDispatchReceiver,
+    ]
+
+    this.actions[actionName] = action
+
+    return action
   }
 
   addStream = (
     stream: Parameters<Room['addStream']>[0],
-    targetPeers: Parameters<Room['addStream']>[1],
-    metadata: { type: StreamType }
+    options?: Parameters<Room['addStream']>[1]
   ) => {
     // New streams need to be added as a delayed queue to prevent race
     // conditions on the receiver's end where streams and their metadata get
     // mixed up.
     this.streamQueue.push(
-      () => Promise.all(this.room.addStream(stream, targetPeers, metadata)),
+      () => Promise.all(this.room.addStream(stream, options)),
       () => sleep(streamQueueAddDelay)
     )
 
     this.processPendingStreams()
   }
 
-  removeStream: Room['removeStream'] = (stream, targetPeers) => {
-    return this.room.removeStream(stream, targetPeers)
+  removeStream: Room['removeStream'] = (stream, options) => {
+    return this.room.removeStream(stream, options)
   }
 }

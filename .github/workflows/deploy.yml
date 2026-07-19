@@ -25,7 +25,7 @@ jobs:
             echo "deploy_ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "deploy_ready=false" >> "$GITHUB_OUTPUT"
-            echo "Deployment skipped: DIGITABLE_HOST, DIGITABLE_USERNAME, or DIGITABLE_SSH_KEY is not configured."
+            echo "Deployment skipped: required SSH secrets are not configured."
           fi
 
   deploy:
@@ -35,7 +35,7 @@ jobs:
     environment: production
     env:
       VITE_GITHUB_REPO: https://github.com/digitable-lol/chat
-      VITE_ICE_SERVERS_URL: ${{ secrets.DIGITABLE_CHAT_ICE_SERVERS_URL }}
+      VITE_RTC_CONFIG_ENDPOINT: ${{ secrets.DIGITABLE_CHAT_ICE_SERVERS_URL }}
       VITE_SIGNALING_RELAY_URLS: ${{ vars.SIGNALING_RELAY_URLS }}
       VITE_SIGNALING_RELAY_REDUNDANCY: ${{ vars.SIGNALING_RELAY_REDUNDANCY }}
     steps:
@@ -44,7 +44,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18.12.1
+          node-version: 24
           cache: npm
 
       - name: Build
@@ -67,7 +67,7 @@ jobs:
           DIGITABLE_HOST: ${{ secrets.DIGITABLE_HOST }}
           DIGITABLE_USERNAME: ${{ secrets.DIGITABLE_USERNAME }}
         run: |
-          rsync -avz --delete \
+          rsync -avz --delete --exclude='.user.ini' \
             -e "ssh -i ~/.ssh/id_ed25519 -p 22" \
             dist/ \
             "$DIGITABLE_USERNAME@$DIGITABLE_HOST:/www/wwwroot/chat.digitable.life/"

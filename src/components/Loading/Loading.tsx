@@ -1,8 +1,6 @@
 import Box, { BoxProps } from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
 
-import ChatMark from 'brand/assets/digitable-chat-project-icon.svg'
-
 interface WholePageLoadingProps extends BoxProps {}
 
 export const WholePageLoading = ({
@@ -11,7 +9,6 @@ export const WholePageLoading = ({
 }: WholePageLoadingProps) => {
   return (
     <Box
-      className="dt-chat-loading"
       sx={[
         {
           display: 'flex',
@@ -27,9 +24,7 @@ export const WholePageLoading = ({
       ]}
       {...props}
     >
-      <img src={ChatMark} alt="" />
-      <CircularProgress size={24} thickness={3} />
-      <span>Preparing secure room</span>
+      <CircularProgress aria-label="Loading" />
     </Box>
   )
 }

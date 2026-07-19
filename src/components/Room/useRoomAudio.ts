@@ -1,7 +1,7 @@
 import { useContext, useEffect, useCallback, useState } from 'react'
 
 import { ShellContext } from 'contexts/ShellContext'
-import { PeerActions } from 'models/network'
+import { PeerAction } from 'models/network'
 import {
   AudioState,
   Peer,
@@ -9,7 +9,14 @@ import {
   PeerAudioChannelState,
   StreamType,
 } from 'models/chat'
-import { PeerRoom, PeerHookType, PeerStreamType } from 'lib/PeerRoom'
+import {
+  PeerRoom,
+  PeerHookType,
+  PeerStreamType,
+  ActionNamespace,
+} from 'lib/PeerRoom'
+import { usePeerAction } from 'hooks/usePeerAction'
+import { MessageContext } from 'trystero'
 
 interface UseRoomAudioConfig {
   peerRoom: PeerRoom
@@ -33,39 +40,43 @@ export function useRoomAudio({ peerRoom }: UseRoomAudioConfig) {
       if (!audioStream) return
 
       const devices = await window.navigator.mediaDevices.enumerateDevices()
-      const audioDevices = devices.filter(({ kind }) => kind === 'audioinput')
-      setAudioDevices(audioDevices)
+      const newAudioDevices = devices.filter(
+        ({ kind }) => kind === 'audioinput'
+      )
+
+      setAudioDevices(newAudioDevices)
     })()
   }, [audioStream])
 
-  const [sendAudioChange, receiveAudioChange] = peerRoom.makeAction<
-    Partial<PeerAudioChannelState>
-  >(PeerActions.AUDIO_CHANGE)
+  const [sendAudioChange] = usePeerAction<Partial<PeerAudioChannelState>>({
+    namespace: ActionNamespace.GROUP,
+    peerAction: PeerAction.AUDIO_CHANGE,
+    peerRoom,
+    onReceive: (peerAudioChannelState, { peerId }: MessageContext) => {
+      setPeerList(peerList => {
+        return peerList.map(peer => {
+          const newPeer: Peer = { ...peer }
 
-  receiveAudioChange((peerAudioChannelState, peerId) => {
-    setPeerList(peerList => {
-      return peerList.map(peer => {
-        const newPeer: Peer = { ...peer }
+          const microphoneAudioChannel =
+            peerAudioChannelState[AudioChannelName.MICROPHONE]
 
-        const microphoneAudioChannel =
-          peerAudioChannelState[AudioChannelName.MICROPHONE]
+          if (microphoneAudioChannel) {
+            if (peer.peerId === peerId) {
+              newPeer.audioChannelState = {
+                ...newPeer.audioChannelState,
+                ...peerAudioChannelState,
+              }
 
-        if (microphoneAudioChannel) {
-          if (peer.peerId === peerId) {
-            newPeer.audioChannelState = {
-              ...newPeer.audioChannelState,
-              ...peerAudioChannelState,
-            }
-
-            if (microphoneAudioChannel === AudioState.STOPPED) {
-              deletePeerAudio(peerId)
+              if (microphoneAudioChannel === AudioState.STOPPED) {
+                deletePeerAudio(peerId)
+              }
             }
           }
-        }
 
-        return newPeer
+          return newPeer
+        })
       })
-    })
+    },
   })
 
   peerRoom.onPeerStream(PeerStreamType.AUDIO, (stream, peerId, metadata) => {
@@ -83,6 +94,7 @@ export function useRoomAudio({ peerRoom }: UseRoomAudioConfig) {
     if (audioTracks.length === 0) return
 
     const audio = new Audio()
+
     audio.srcObject = stream
     audio.autoplay = true
 
@@ -115,8 +127,8 @@ export function useRoomAudio({ peerRoom }: UseRoomAudioConfig) {
             video: false,
           })
 
-          peerRoom.addStream(newSelfStream, null, {
-            type: StreamType.MICROPHONE,
+          peerRoom.addStream(newSelfStream, {
+            metadata: { type: StreamType.MICROPHONE },
           })
 
           sendAudioChange({
@@ -134,7 +146,7 @@ export function useRoomAudio({ peerRoom }: UseRoomAudioConfig) {
         if (audioStream) {
           cleanupAudio()
 
-          peerRoom.removeStream(audioStream, peerRoom.getPeers())
+          peerRoom.removeStream(audioStream, { target: peerRoom.getPeers() })
 
           sendAudioChange({
             [AudioChannelName.MICROPHONE]: AudioState.STOPPED,
@@ -167,6 +179,7 @@ export function useRoomAudio({ peerRoom }: UseRoomAudioConfig) {
 
   const handleAudioDeviceSelect = async (audioDevice: MediaDeviceInfo) => {
     const { deviceId } = audioDevice
+
     setSelectedAudioDeviceId(deviceId)
 
     if (!audioStream) return
@@ -176,7 +189,7 @@ export function useRoomAudio({ peerRoom }: UseRoomAudioConfig) {
       audioStream.removeTrack(audioTrack)
     }
 
-    peerRoom.removeStream(audioStream, peerRoom.getPeers())
+    peerRoom.removeStream(audioStream, { target: peerRoom.getPeers() })
 
     const newSelfStream = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -185,8 +198,8 @@ export function useRoomAudio({ peerRoom }: UseRoomAudioConfig) {
       video: false,
     })
 
-    peerRoom.addStream(newSelfStream, null, {
-      type: StreamType.MICROPHONE,
+    peerRoom.addStream(newSelfStream, {
+      metadata: { type: StreamType.MICROPHONE },
     })
 
     setAudioStream(newSelfStream)
@@ -199,6 +212,7 @@ export function useRoomAudio({ peerRoom }: UseRoomAudioConfig) {
       }
 
       const microphoneAudio = newPeerAudios[peerId][AudioChannelName.MICROPHONE]
+
       microphoneAudio?.pause()
 
       const { [AudioChannelName.MICROPHONE]: _, ...newPeerAudioChannels } =
@@ -212,15 +226,16 @@ export function useRoomAudio({ peerRoom }: UseRoomAudioConfig) {
 
   const handleAudioForNewPeer = (peerId: string) => {
     if (audioStream) {
-      peerRoom.addStream(audioStream, peerId, {
-        type: StreamType.MICROPHONE,
+      peerRoom.addStream(audioStream, {
+        target: peerId,
+        metadata: { type: StreamType.MICROPHONE },
       })
     }
   }
 
   const handleAudioForLeavingPeer = (peerId: string) => {
     if (audioStream) {
-      peerRoom.removeStream(audioStream, peerId)
+      peerRoom.removeStream(audioStream, { target: peerId })
     }
 
     deletePeerAudio(peerId)
