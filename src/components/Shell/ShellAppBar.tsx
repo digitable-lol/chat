@@ -25,8 +25,10 @@ import { useContext } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 
 import { ShellContext } from 'contexts/ShellContext'
+import { useLocale } from 'contexts/LocaleContext'
 import { routes } from 'config/routes'
 import ChatMark from 'brand/assets/digitable-chat-project-icon.svg'
+import { LanguageSwitch } from 'components/LanguageSwitch/LanguageSwitch'
 
 import { drawerWidth } from './Drawer'
 import { peerListWidth } from './PeerList'
@@ -78,6 +80,11 @@ interface ShellAppBarProps {
   setIsFullscreen: (isFullscreen: boolean) => void
 }
 
+const languageOptions = [
+  { label: 'RU', value: 'ru' as const },
+  { label: 'EN', value: 'en' as const },
+]
+
 export const ShellAppBar = ({
   onDrawerOpen,
   onLinkButtonClick,
@@ -92,6 +99,7 @@ export const ShellAppBar = ({
   setIsFullscreen,
 }: ShellAppBarProps) => {
   const theme = useTheme()
+  const { locale, setLocale, t } = useLocale()
   const { peerList, isEmbedded, showRoomControls, roomId } =
     useContext(ShellContext)
   const handleQRCodeClick = () => setIsQRCodeDialogOpen(true)
@@ -119,7 +127,7 @@ export const ShellAppBar = ({
                   size="large"
                   edge="start"
                   color="inherit"
-                  aria-label="Open menu"
+                  aria-label={t('openMenu')}
                   sx={{
                     width: 42,
                     height: 42,
@@ -135,7 +143,7 @@ export const ShellAppBar = ({
                 <Box
                   component={RouterLink}
                   to={routes.ROOT}
-                  aria-label="Digitable Chat home"
+                  aria-label={t('homeLabel')}
                   sx={{
                     display: 'flex',
                     alignItems: 'center',
@@ -184,23 +192,32 @@ export const ShellAppBar = ({
               </>
             )}
 
+            {!isEmbedded && (
+              <LanguageSwitch
+                ariaLabel={t('language')}
+                options={languageOptions}
+                value={locale}
+                onChange={setLocale}
+              />
+            )}
+
             {hasActiveRoom && !isEmbedded && (
               <>
-                <Tooltip title="Copy room link">
+                <Tooltip title={t('copyRoomLink')}>
                   <IconButton
                     size="large"
                     color="inherit"
-                    aria-label="Copy room link"
+                    aria-label={t('copyRoomLink')}
                     onClick={onLinkButtonClick}
                   >
                     <Link />
                   </IconButton>
                 </Tooltip>
-                <Tooltip title="Show room QR code">
+                <Tooltip title={t('showRoomQr')}>
                   <IconButton
                     size="large"
                     color="inherit"
-                    aria-label="Show room QR code"
+                    aria-label={t('showRoomQr')}
                     onClick={handleQRCodeClick}
                   >
                     <QrCode2 />
@@ -219,37 +236,41 @@ export const ShellAppBar = ({
                 <Tooltip
                   title={
                     showRoomControls
-                      ? 'Hide room controls'
-                      : 'Show room controls'
+                      ? t('hideRoomControls')
+                      : t('showRoomControls')
                   }
                 >
                   <IconButton
                     size="large"
                     color="inherit"
-                    aria-label="Show room controls"
+                    aria-label={t('showRoomControls')}
                     onClick={onRoomControlsClick}
                   >
                     <RoomPreferences />
                   </IconButton>
                 </Tooltip>
                 <Tooltip
-                  title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                  title={
+                    isFullscreen ? t('exitFullscreen') : t('enterFullscreen')
+                  }
                 >
                   <IconButton
                     size="large"
                     color="inherit"
-                    aria-label="Fullscreen"
+                    aria-label={
+                      isFullscreen ? t('exitFullscreen') : t('enterFullscreen')
+                    }
                     onClick={onClickFullscreen}
                   >
                     {isFullscreen ? <FullscreenExit /> : <Fullscreen />}
                   </IconButton>
                 </Tooltip>
-                <Tooltip title="Show participants and connection status">
+                <Tooltip title={t('participants')}>
                   <IconButton
                     size="large"
                     edge="end"
                     color="inherit"
-                    aria-label="Peer list"
+                    aria-label={t('peerList')}
                     onClick={onPeerListClick}
                     sx={{ ml: 0.5 }}
                   >
@@ -268,10 +289,10 @@ export const ShellAppBar = ({
         in={!showAppBar}
         unmountOnExit
       >
-        <Tooltip title="Show room controls">
+        <Tooltip title={t('showRoomControls')}>
           <Fab
             size="small"
-            aria-label="show room controls"
+            aria-label={t('showRoomControls')}
             color="primary"
             onClick={onRoomControlsClick}
           >

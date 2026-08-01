@@ -25,6 +25,7 @@ import { PeerNameDisplay } from 'components/PeerNameDisplay'
 import { isEnhancedConnectivityAvailable } from 'config/enhancedConnectivity'
 import { routes } from 'config/routes'
 import { SettingsContext } from 'contexts/SettingsContext'
+import { useLocale } from 'contexts/LocaleContext'
 import { RoomNameType } from 'lib/RoomNameGenerator'
 
 import { CommunityRoomSelector } from './CommunityRoomSelector'
@@ -37,6 +38,7 @@ export interface HomeProps {
 
 export function Home({ userId }: HomeProps) {
   const { hash } = useLocation()
+  const { locale, t } = useLocale()
   const { updateUserSettings, getUserSettings } = useContext(SettingsContext)
   const { isEnhancedConnectivityEnabled } = getUserSettings()
   const {
@@ -74,55 +76,43 @@ export function Home({ userId }: HomeProps) {
               <img src={ChatMark} alt="" />
               <div>
                 <strong>Digitable Chat</strong>
-                <span>Private rooms</span>
+                <span>{t('privateRooms')}</span>
               </div>
             </Link>
 
-            <p className="dt-chat-eyebrow">Encrypted peer-to-peer rooms</p>
-            <h1 className="dt-chat-title">Talk without leaving a trail.</h1>
+            <p className="dt-chat-eyebrow">{t('eyebrow')}</p>
+            <h1 className="dt-chat-title">{t('title')}</h1>
             <div className="dt-chat-language-summary">
-              <article lang="en">
-                <span>EN</span>
-                <p>
-                  Create a room and share its link. Your browsers find each
-                  other, then open an encrypted connection for messages, calls,
-                  screen sharing, and files.
-                </p>
-              </article>
-              <article lang="ru">
-                <span>RU</span>
-                <p>
-                  Создайте комнату и отправьте ссылку. Браузеры найдут друг
-                  друга и откроют зашифрованное соединение для сообщений,
-                  звонков, экрана и файлов.
-                </p>
+              <article lang={locale}>
+                <span>{locale.toUpperCase()}</span>
+                <p>{t('summary')}</p>
               </article>
             </div>
 
-            <div className="dt-chat-flow" aria-label="Connection flow">
+            <div className="dt-chat-flow" aria-label={t('connectionFlow')}>
               <div className="dt-chat-flow-step">
-                <span>01 / Find · Найти</span>
-                <strong>MQTT + STUN introduce the browsers</strong>
+                <span>01 / {t('flowFind')}</span>
+                <strong>{t('flowFindDescription')}</strong>
               </div>
               <div className="dt-chat-flow-step">
-                <span>02 / Connect · Связать</span>
-                <strong>WebRTC connects devices directly</strong>
+                <span>02 / {t('flowConnect')}</span>
+                <strong>{t('flowConnectDescription')}</strong>
               </div>
               <div className="dt-chat-flow-step">
-                <span>03 / Fallback · Запасной путь</span>
-                <strong>TURN helps only when direct access is blocked</strong>
+                <span>03 / {t('flowFallback')}</span>
+                <strong>{t('flowFallbackDescription')}</strong>
               </div>
             </div>
           </section>
 
           <form className="dt-chat-setup" onSubmit={handleFormSubmit}>
             <header className="dt-chat-setup-header">
-              <span>New conversation</span>
-              <h2>Open a room</h2>
+              <span>{t('newConversation')}</span>
+              <h2>{t('openRoom')}</h2>
             </header>
 
             <div className="dt-chat-identity">
-              Your username:{' '}
+              {t('username')}{' '}
               <strong>
                 <PeerNameDisplay paragraph={false}>{userId}</PeerNameDisplay>
               </strong>
@@ -130,14 +120,14 @@ export function Home({ userId }: HomeProps) {
 
             <FormControl fullWidth>
               <TextField
-                label="Room name (generated on your device)"
+                label={t('roomName')}
                 value={roomName}
                 onChange={handleRoomNameChange}
                 InputProps={{
                   endAdornment: (
-                    <Tooltip title="Generate a new room name">
+                    <Tooltip title={t('generateRoomName')}>
                       <IconButton
-                        aria-label="Regenerate room id"
+                        aria-label={t('regenerateRoomId')}
                         onClick={regenerateRoomName}
                         size="small"
                       >
@@ -153,7 +143,7 @@ export function Home({ userId }: HomeProps) {
               value={roomNameType}
               exclusive
               onChange={handleRoomNameTypeChange}
-              aria-label="Room name type"
+              aria-label={t('roomNameType')}
               size="small"
               fullWidth
               sx={{ mt: 2 }}
@@ -163,9 +153,9 @@ export function Home({ userId }: HomeProps) {
               </ToggleButton>
               <ToggleButton
                 value={RoomNameType.PASSPHRASE}
-                aria-label="Passphrase"
+                aria-label={t('passphrase')}
               >
-                Passphrase
+                {t('passphrase')}
               </ToggleButton>
             </ToggleButtonGroup>
 
@@ -178,7 +168,7 @@ export function Home({ userId }: HomeProps) {
                 endIcon={<ArrowForwardRounded />}
                 onClick={handleJoinPublicRoomClick}
               >
-                Join public room
+                {t('joinPublicRoom')}
               </Button>
               <Button
                 type="button"
@@ -187,7 +177,7 @@ export function Home({ userId }: HomeProps) {
                 startIcon={<LockRounded />}
                 onClick={handleJoinPrivateRoomClick}
               >
-                Join private room
+                {t('joinPrivateRoom')}
               </Button>
             </div>
 
@@ -199,7 +189,7 @@ export function Home({ userId }: HomeProps) {
               disabled={!isRoomNameValid}
               onClick={handleGetEmbedCodeClick}
             >
-              Get embed code
+              {t('getEmbedCode')}
             </Button>
 
             {isEnhancedConnectivityAvailable && (
@@ -215,13 +205,7 @@ export function Home({ userId }: HomeProps) {
               />
             )}
 
-            <footer className="dt-chat-setup-footer">
-              No account. No conversation history on a server. Built by{' '}
-              <a href="https://digitable.life" target="_blank" rel="noreferrer">
-                Digitable
-              </a>{' '}
-              on the open-source Chitchatter foundation.
-            </footer>
+            <footer className="dt-chat-setup-footer">{t('setupFooter')}</footer>
           </form>
         </div>
 
@@ -233,23 +217,12 @@ export function Home({ userId }: HomeProps) {
           <header className="dt-chat-connection-guide-header">
             <div>
               <p className="dt-chat-section-label">
-                Connection, in plain language / Простыми словами
+                {t('connectionPlainLanguage')}
               </p>
-              <h2 id="connection-guide-title">
-                How the connection works
-                <span>Как работает подключение</span>
-              </h2>
+              <h2 id="connection-guide-title">{t('connectionTitle')}</h2>
             </div>
             <div className="dt-chat-connection-intro">
-              <p lang="en">
-                Relays help two browsers meet. The conversation itself uses an
-                encrypted WebRTC connection and is not stored by Digitable.
-              </p>
-              <p lang="ru">
-                Ретрансляторы помогают двум браузерам встретиться. Сам разговор
-                идёт по зашифрованному WebRTC-соединению и не хранится у
-                Digitable.
-              </p>
+              <p lang={locale}>{t('connectionIntro')}</p>
             </div>
           </header>
 
@@ -259,17 +232,8 @@ export function Home({ userId }: HomeProps) {
                 <LinkRounded />
               </div>
               <span className="dt-chat-connection-step-number">01</span>
-              <h3>Share a link · Отправьте ссылку</h3>
-              <p lang="en">
-                The room name is created in your browser. A public room opens
-                for anyone with its link; a private room also asks for the same
-                password.
-              </p>
-              <p lang="ru">
-                Имя комнаты создаётся в вашем браузере. В публичную комнату
-                входит любой со ссылкой, а приватная дополнительно просит общий
-                пароль.
-              </p>
+              <h3>{t('shareLink')}</h3>
+              <p lang={locale}>{t('shareLinkDescription')}</p>
             </article>
 
             <article className="dt-chat-connection-step">
@@ -277,17 +241,8 @@ export function Home({ userId }: HomeProps) {
                 <HubRounded />
               </div>
               <span className="dt-chat-connection-step-number">02</span>
-              <h3>Find each other · Найдите друг друга</h3>
-              <p lang="en">
-                An MQTT relay exchanges the technical introduction. STUN helps
-                each browser learn how it can be reached. Neither carries your
-                chat history.
-              </p>
-              <p lang="ru">
-                MQTT-ретранслятор передаёт техническое знакомство, а STUN
-                помогает понять доступный сетевой адрес. История переписки через
-                них не передаётся.
-              </p>
+              <h3>{t('findEachOther')}</h3>
+              <p lang={locale}>{t('findEachOtherDescription')}</p>
             </article>
 
             <article className="dt-chat-connection-step">
@@ -295,16 +250,8 @@ export function Home({ userId }: HomeProps) {
                 <DevicesRounded />
               </div>
               <span className="dt-chat-connection-step-number">03</span>
-              <h3>Connect directly · Соединитесь напрямую</h3>
-              <p lang="en">
-                WebRTC sends messages and media through an encrypted connection
-                between participants. There is no central server keeping a copy
-                of the conversation.
-              </p>
-              <p lang="ru">
-                WebRTC передаёт сообщения и медиа по зашифрованному соединению
-                между участниками. Центрального сервера с копией разговора нет.
-              </p>
+              <h3>{t('connectDirectly')}</h3>
+              <p lang={locale}>{t('connectDirectlyDescription')}</p>
             </article>
 
             <article className="dt-chat-connection-step">
@@ -312,41 +259,28 @@ export function Home({ userId }: HomeProps) {
                 <AltRouteRounded />
               </div>
               <span className="dt-chat-connection-step-number">04</span>
-              <h3>Use TURN if needed · TURN, если иначе нельзя</h3>
-              <p lang="en">
-                Some office, mobile, or public networks block a direct path.
-                TURN then forwards the encrypted WebRTC traffic without reading
-                the message content.
-              </p>
-              <p lang="ru">
-                Офисная, мобильная или публичная сеть может блокировать прямой
-                путь. Тогда TURN пересылает зашифрованный WebRTC-трафик, не
-                читая содержимое сообщений.
-              </p>
+              <h3>{t('useTurn')}</h3>
+              <p lang={locale}>{t('useTurnDescription')}</p>
             </article>
           </div>
 
           <div className="dt-chat-connection-status-guide">
-            <strong>What the status means / Что означает статус</strong>
+            <strong>{t('statusMeaning')}</strong>
             <div>
               <span>
                 <i className="is-direct" />
-                Direct — device to device / напрямую
+                {t('statusDirect')}
               </span>
               <span>
                 <i className="is-relay" />
-                Relay — encrypted through TURN / через TURN
+                {t('statusRelay')}
               </span>
               <span>
                 <i className="is-searching" />
-                Searching — waiting for a peer / ждём участника
+                {t('statusSearching')}
               </span>
             </div>
-            <p>
-              Open the participants panel inside a room to see the connection
-              type for each person. / В комнате откройте панель участников — там
-              виден тип соединения с каждым человеком.
-            </p>
+            <p>{t('statusGuide')}</p>
           </div>
         </section>
 

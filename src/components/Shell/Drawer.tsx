@@ -28,6 +28,7 @@ import GitInfo from 'react-git-info/macro'
 import ChatMark from 'brand/assets/digitable-chat-project-icon.svg'
 import { routes } from 'config/routes'
 import { SettingsContext } from 'contexts/SettingsContext'
+import { useLocale } from 'contexts/LocaleContext'
 import { ColorMode } from 'models/settings'
 
 const { commit } = GitInfo()
@@ -43,6 +44,7 @@ export const Drawer = ({ isDrawerOpen, onDrawerClose }: DrawerProps) => {
   const theme = useTheme()
   const location = useLocation()
   const settingsContext = useContext(SettingsContext)
+  const { t } = useLocale()
   const colorMode = settingsContext.getUserSettings().colorMode
 
   const handleColorModeToggleClick = () => {
@@ -55,15 +57,15 @@ export const Drawer = ({ isDrawerOpen, onDrawerClose }: DrawerProps) => {
   const navigationItems = [
     {
       to: routes.ROOT,
-      label: 'Home / Главная',
-      description: 'Start or join a room',
+      label: t('home'),
+      description: t('homeDescription'),
       icon: <HomeRounded />,
       selected: location.pathname === routes.ROOT && !location.hash,
     },
     {
       to: `${routes.ROOT}#how-it-connects`,
-      label: 'Connection / Подключение',
-      description: 'MQTT, WebRTC, and TURN',
+      label: t('connection'),
+      description: t('connectionDescription'),
       icon: <HubRounded />,
       selected:
         location.pathname === routes.ROOT &&
@@ -71,22 +73,22 @@ export const Drawer = ({ isDrawerOpen, onDrawerClose }: DrawerProps) => {
     },
     {
       to: routes.SETTINGS,
-      label: 'Settings / Настройки',
-      description: 'Privacy, sound, and network',
+      label: t('settings'),
+      description: t('settingsDescription'),
       icon: <SettingsRounded />,
       selected: location.pathname === routes.SETTINGS,
     },
     {
       to: routes.ABOUT,
-      label: 'About / О проекте',
-      description: 'What Digitable Chat is',
+      label: t('about'),
+      description: t('aboutDescription'),
       icon: <InfoRounded />,
       selected: location.pathname === routes.ABOUT,
     },
     {
       to: routes.DISCLAIMER,
-      label: 'Legal / Условия',
-      description: 'Use and responsibility',
+      label: t('legal'),
+      description: t('legalDescription'),
       icon: <PolicyRounded />,
       selected: location.pathname === routes.DISCLAIMER,
     },
@@ -125,7 +127,7 @@ export const Drawer = ({ isDrawerOpen, onDrawerClose }: DrawerProps) => {
           component={Link}
           to={routes.ROOT}
           onClick={onDrawerClose}
-          aria-label="Digitable Chat home"
+          aria-label={t('homeLabel')}
           sx={{
             minWidth: 0,
             display: 'flex',
@@ -165,14 +167,14 @@ export const Drawer = ({ isDrawerOpen, onDrawerClose }: DrawerProps) => {
                 textTransform: 'uppercase',
               }}
             >
-              Private P2P rooms
+              {t('privateRooms')}
             </Typography>
           </Box>
         </Box>
 
         <IconButton
           onClick={onDrawerClose}
-          aria-label="Close menu"
+          aria-label={t('closeMenu')}
           sx={{
             width: 38,
             height: 38,
@@ -189,7 +191,7 @@ export const Drawer = ({ isDrawerOpen, onDrawerClose }: DrawerProps) => {
 
       <Box
         component="nav"
-        aria-label="Navigation menu"
+        aria-label={t('navigationMenu')}
         sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, py: 2 }}
       >
         <Typography
@@ -203,7 +205,7 @@ export const Drawer = ({ isDrawerOpen, onDrawerClose }: DrawerProps) => {
             textTransform: 'uppercase',
           }}
         >
-          Navigate / Навигация
+          {t('navigation')}
         </Typography>
 
         <List sx={{ px: 1, pt: 1.25 }}>
@@ -306,7 +308,7 @@ export const Drawer = ({ isDrawerOpen, onDrawerClose }: DrawerProps) => {
                 textTransform: 'uppercase',
               }}
             >
-              Connection path
+              {t('connectionPath')}
             </Typography>
             <Box
               aria-label="MQTT to WebRTC with TURN fallback"
@@ -339,7 +341,7 @@ export const Drawer = ({ isDrawerOpen, onDrawerClose }: DrawerProps) => {
           <ListItem disablePadding>
             <ListItemButton
               onClick={handleColorModeToggleClick}
-              aria-label="Change theme"
+              aria-label={t('changeTheme')}
               sx={{
                 minHeight: 58,
                 mx: 0,
@@ -373,11 +375,9 @@ export const Drawer = ({ isDrawerOpen, onDrawerClose }: DrawerProps) => {
               </ListItemIcon>
               <ListItemText
                 primary={
-                  theme.palette.mode === 'dark'
-                    ? 'Light mode / Светлая'
-                    : 'Dark mode / Тёмная'
+                  theme.palette.mode === 'dark' ? t('lightMode') : t('darkMode')
                 }
-                secondary="Change appearance"
+                secondary={t('changeAppearance')}
                 primaryTypographyProps={{ fontSize: 12.5, fontWeight: 700 }}
                 secondaryTypographyProps={{ fontSize: 10.5 }}
               />

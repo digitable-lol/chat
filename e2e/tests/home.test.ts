@@ -47,7 +47,7 @@ test.describe('Home Page', () => {
     await expect(getEmbedCodeButton).toBeVisible()
   })
 
-  test('should explain the connection in English and Russian', async ({
+  test('should switch the page between English and Russian', async ({
     page,
   }) => {
     await page.goto('/#how-it-connects')
@@ -57,12 +57,26 @@ test.describe('Home Page', () => {
       page.getByRole('heading', { name: /how the connection works/i })
     ).toBeVisible()
     await expect(page.getByText(/Relays help two browsers meet/i)).toBeVisible()
+    await expect(page.getByText(/Direct — device to device/i)).toBeVisible()
+
+    await page.getByTestId('language-switch-trigger').click()
+    await page.getByTestId('language-switch-option-ru').click()
+
+    await expect(
+      page.getByRole('heading', { name: /как работает подключение/i })
+    ).toBeVisible()
     await expect(
       page.getByText(/Ретрансляторы помогают двум браузерам встретиться/i)
     ).toBeVisible()
-    await expect(page.getByText(/Direct — device to device/i)).toBeVisible()
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ru')
+    await expect(page.getByText(/Relays help two browsers meet/i)).toHaveCount(
+      0
+    )
+
+    await page.reload()
+    await expect(page.getByTestId('language-switch-trigger')).toHaveText('RU')
     await expect(
-      page.getByText(/Relay — encrypted through TURN/i)
+      page.getByRole('heading', { name: /как работает подключение/i })
     ).toBeVisible()
   })
 

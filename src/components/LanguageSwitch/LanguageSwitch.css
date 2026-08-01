@@ -1,0 +1,90 @@
+.dt-language-switch {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--dt-chat-text);
+}
+
+.dt-language-switch__trigger {
+  display: inline-flex;
+  min-width: 66px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--dt-chat-line-strong);
+  border-radius: 8px;
+  background: rgb(0 229 229 / 9%);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition:
+    border-color var(--digitable-motion-fast) var(--digitable-ease-standard),
+    background var(--digitable-motion-fast) var(--digitable-ease-standard);
+}
+
+.dt-language-switch__trigger:hover,
+.dt-language-switch__trigger:focus-visible {
+  border-color: var(--digitable-cyan);
+  background: rgb(0 229 229 / 16%);
+  outline: none;
+}
+
+.dt-language-switch__trigger svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+  transition: transform var(--digitable-motion-fast)
+    var(--digitable-ease-standard);
+}
+
+.dt-language-switch__trigger[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.dt-language-switch__menu {
+  position: absolute;
+  z-index: 1400;
+  top: calc(100% + 6px);
+  right: 0;
+  display: grid;
+  min-width: 96px;
+  padding: 5px;
+  border: 1px solid var(--dt-chat-line);
+  border-radius: 10px;
+  background: var(--dt-chat-surface-strong);
+  box-shadow: var(--dt-chat-shadow);
+  backdrop-filter: blur(16px);
+}
+
+.dt-language-switch__option {
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dt-language-switch__option:hover,
+.dt-language-switch__option:focus-visible {
+  background: rgb(0 229 229 / 11%);
+  outline: none;
+}
+
+.dt-language-switch__option--active {
+  background: rgb(0 229 229 / 16%);
+  color: var(--digitable-cyan);
+}

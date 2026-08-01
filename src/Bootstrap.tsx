@@ -16,6 +16,7 @@ import { isEnhancedConnectivityAvailable } from 'config/enhancedConnectivity'
 import { homepageUrl, routes } from 'config/routes'
 import { SettingsContext } from 'contexts/SettingsContext'
 import { StorageContext } from 'contexts/StorageContext'
+import { LocaleProvider } from 'contexts/LocaleContext'
 import {
   isConfigMessageEvent,
   PostMessageEvent,
@@ -247,45 +248,47 @@ const Bootstrap = ({
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Router {...routerProps}>
-        <StorageContext.Provider value={storageContextValue}>
-          <SettingsContext.Provider value={settingsContextValue}>
-            {hasLoadedSettings ? (
-              <Shell appNeedsUpdate={appNeedsUpdate} userPeerId={userId}>
-                <Routes>
-                  {[routes.ROOT, routes.INDEX_HTML].map(path => (
+      <LocaleProvider>
+        <Router {...routerProps}>
+          <StorageContext.Provider value={storageContextValue}>
+            <SettingsContext.Provider value={settingsContextValue}>
+              {hasLoadedSettings ? (
+                <Shell appNeedsUpdate={appNeedsUpdate} userPeerId={userId}>
+                  <Routes>
+                    {[routes.ROOT, routes.INDEX_HTML].map(path => (
+                      <Route
+                        key={path}
+                        path={path}
+                        element={<Home userId={userId} />}
+                      />
+                    ))}
+                    <Route path={routes.ABOUT} element={<About />} />
+                    <Route path={routes.DISCLAIMER} element={<Disclaimer />} />
                     <Route
-                      key={path}
-                      path={path}
-                      element={<Home userId={userId} />}
+                      path={routes.SETTINGS}
+                      element={<Settings userId={userId} />}
                     />
-                  ))}
-                  <Route path={routes.ABOUT} element={<About />} />
-                  <Route path={routes.DISCLAIMER} element={<Disclaimer />} />
-                  <Route
-                    path={routes.SETTINGS}
-                    element={<Settings userId={userId} />}
-                  />
-                  <Route
-                    path={routes.PUBLIC_ROOM}
-                    element={<PublicRoom userId={userId} />}
-                  />
-                  <Route
-                    path={routes.PRIVATE_ROOM}
-                    element={<PrivateRoom userId={userId} />}
-                  />
-                  <Route
-                    path="*"
-                    element={<Navigate to={routes.ROOT} replace />}
-                  />
-                </Routes>
-              </Shell>
-            ) : (
-              <WholePageLoading />
-            )}
-          </SettingsContext.Provider>
-        </StorageContext.Provider>
-      </Router>
+                    <Route
+                      path={routes.PUBLIC_ROOM}
+                      element={<PublicRoom userId={userId} />}
+                    />
+                    <Route
+                      path={routes.PRIVATE_ROOM}
+                      element={<PrivateRoom userId={userId} />}
+                    />
+                    <Route
+                      path="*"
+                      element={<Navigate to={routes.ROOT} replace />}
+                    />
+                  </Routes>
+                </Shell>
+              ) : (
+                <WholePageLoading />
+              )}
+            </SettingsContext.Provider>
+          </StorageContext.Provider>
+        </Router>
+      </LocaleProvider>
     </QueryClientProvider>
   )
 }
